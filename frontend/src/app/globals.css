@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@theme {
+  --color-grafito: #101418;
+  --color-superficie-oscura: #1C2228;
+  --color-fondo-claro: #F4F3EF;
+  --color-blanco: #FFFFFF;
+  --color-dorado: #D9A441;
+  --color-dorado-hover: #B98222;
+  --color-exito: #24865A;
+  --color-error: #C64D45;
+  --color-pendiente: #D99A27;
+
+  --font-family-sora: "Sora", sans-serif;
+  --font-family-dm-sans: "DM Sans", sans-serif;
+
+  --max-width-container: 1280px;
+  --spacing-unit: 8px;
+  --radius-btn: 6px;
+  --radius-card: 10px;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-family-dm-sans);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-fondo-claro);
+    color: var(--color-grafito);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-family-sora);
+    font-weight: 600;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer utilities {
+  .container-movia {
+    max-width: var(--max-width-container);
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .btn-primary {
+    @apply bg-dorado text-grafito font-medium px-6 py-3 rounded-[var(--radius-btn)] transition-colors hover:bg-dorado-hover focus:outline-none focus:ring-2 focus:ring-dorado focus:ring-offset-2 focus:ring-offset-fondo-claro;
+  }
+
+  .btn-secondary {
+    @apply bg-grafito text-blanco font-medium px-6 py-3 rounded-[var(--radius-btn)] transition-colors hover:bg-superficie-oscura focus:outline-none focus:ring-2 focus:ring-grafito focus:ring-offset-2 focus:ring-offset-fondo-claro;
+  }
+
+  .btn-outline {
+    @apply border-2 border-grafito text-grafito font-medium px-6 py-3 rounded-[var(--radius-btn)] transition-colors hover:bg-grafito hover:text-blanco focus:outline-none focus:ring-2 focus:ring-grafito focus:ring-offset-2 focus:ring-offset-fondo-claro;
+  }
+
+  .card-vehicle {
+    @apply bg-blanco rounded-[var(--radius-card)] overflow-hidden shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-[var(--radius-btn)] bg-blanco text-grafito placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-dorado focus:border-transparent transition-all;
+  }
+
+  .label-field {
+    @apply block text-sm font-medium text-grafito mb-1;
+  }
+
+  .error-message {
+    @apply text-sm text-error mt-1;
+  }
+
+  .badge-nuevo {
+    @apply bg-exito text-blanco text-xs font-medium px-2 py-1 rounded-full;
+  }
+
+  .badge-usado {
+    @apply bg-pendiente text-grafito text-xs font-medium px-2 py-1 rounded-full;
+  }
+
+  .badge-borrador {
+    @apply bg-gray-200 text-gray-700 text-xs font-medium px-2 py-1 rounded-full;
+  }
+
+  .badge-publicado {
+    @apply bg-exito text-blanco text-xs font-medium px-2 py-1 rounded-full;
+  }
+
+  .badge-archivado {
+    @apply bg-gray-500 text-blanco text-xs font-medium px-2 py-1 rounded-full;
+  }
+
+  .badge-nueva {
+    @apply bg-dorado text-grafito text-xs font-medium px-2 py-1 rounded-full;
+  }
+
+  .badge-en-contacto {
+    @apply bg-blue-500 text-blanco text-xs font-medium px-2 py-1 rounded-full;
+  }
+
+  .badge-en-seguimiento {
+    @apply bg-pendiente text-grafito text-xs font-medium px-2 py-1 rounded-full;
+  }
+
+  .badge-vendida {
+    @apply bg-exito text-blanco text-xs font-medium px-2 py-1 rounded-full;
+  }
+
+  .badge-descartada {
+    @apply bg-gray-500 text-blanco text-xs font-medium px-2 py-1 rounded-full;
+  }
+}

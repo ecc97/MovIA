@@ -1,0 +1,77 @@
+# Dependencias
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+package-lock.json
+yarn.lock
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+.swc/
+.turbo/
+
+# Producción
+/build
+
+# Build / compilados
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Entorno (nunca versionar secretos)
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Vercel
+.vercel
+
+# Tests y cobertura
+/coverage
+.nyc_output/
+*.lcov
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Logs
+/logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Cachés
+.cache/
+.temp/
+.tmp/
+.eslintcache
+
+# IDE / editores
+.vscode/*
+.vscode
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Docker
+docker-compose.override.yml
+.docker/
