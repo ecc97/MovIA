@@ -1,8 +1,8 @@
-// MOVIA — Middleware de autenticación (MOCK temporal para fases 5-6)
-// En fase 7 se reemplazará por verificación real de cookie httpOnly / JWT.
-// Hoy adjunta un usuario ADMIN de demostración a la request para probar CRUD.
+// MOVIA — Middleware de autenticación (verifica cookie httpOnly con JWT)
+// En fase 7 se reemplazó el mock auth por autenticación real con JWT.
 
 import type { Request, Response, NextFunction } from "express";
+import { verifyToken } from "../config/jwt.js";
 import prisma from "../config/database.js";
 
 export interface AuthUser {
@@ -23,12 +23,29 @@ export const authenticate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const user = await prisma.user.findFirst({
-      where: { email: "maria@movia.demo", isActive: true },
+    const cookieName = process.env.SESSION_COOKIE_NAME ?? "movia_session";
+    const token = (req as any).cookies?.[cookieName];
+
+    if (!token) {
+      res.status(401).json({ error: "no_autenticado", message: "No hay sesión activa" });
+      return;
+    }
+
+    let payload: { sub: string; role: string };
+    try {
+      payload = verifyToken(token);
+    } catch {
+      res.status(401).json({ error: "no_autenticado", message: "Sesión inválida o expirada" });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, name: true, email: true, role: true, isActive: true },
     });
 
-    if (!user) {
-      res.status(500).json({ error: "mock_auth_user_missing" });
+    if (!user?.isActive) {
+      res.status(401).json({ error: "no_autenticado", message: "Usuario inactivo" });
       return;
     }
 
@@ -39,6 +56,7 @@ export const authenticate = async (
       role: user.role as "ADMIN" | "ASESOR",
       isActive: user.isActive,
     };
+
     next();
   } catch (err) {
     next(err);
