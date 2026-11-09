@@ -6,6 +6,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { routerVehicles } from "./modules/vehicles/routes/vehicles.routes.js";
+import routerInquiries from "./modules/inquiries/routes/inquiry.routes.js";
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 4000);
@@ -21,6 +22,9 @@ app.get("/api/health", (_req, res) => {
 
 // Rutas de vehículos (públicas, sin auth todavía)
 app.use("/api/vehicles", routerVehicles);
+
+// Rutas de consultas (inquiries)
+app.use("/api/inquiries", routerInquiries);
 
 app.listen(PORT, () => {
   console.log(`🚗 MovIA API listening on port ${PORT}`);
