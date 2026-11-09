@@ -40,6 +40,16 @@ export interface VehicleSummary {
   photoUrl?: string;
 }
 
+export interface VehicleList {
+  data: VehicleSummary[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export interface VehicleDetail extends VehicleSummary {
   description: string | null;
   fuel: string;
@@ -67,7 +77,7 @@ export interface VehicleQueryParams {
   limit?: string;
 }
 
-export async function getVehicles(params?: VehicleQueryParams) {
+export async function getVehicles(params?: VehicleQueryParams): Promise<VehicleSummary[]> {
   const search = new URLSearchParams();
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
@@ -77,11 +87,13 @@ export async function getVehicles(params?: VehicleQueryParams) {
     });
   }
   const qs = search.toString();
-  return apiFetch<VehicleSummary[]>(`/api/vehicles${qs ? `?${qs}` : ""}`);
+  const response = await apiFetch<VehicleList>(`/api/vehicles${qs ? `?${qs}` : ""}`);
+  return response.data ?? [];
 }
 
 export async function getVehicle(id: string): Promise<VehicleDetail> {
-  return apiFetch(`/api/vehicles/${id}`);
+  const response = await apiFetch<{ data: VehicleDetail }>(`/api/vehicles/${id}`);
+  return response.data;
 }
 
 // Inquiries
@@ -92,6 +104,11 @@ export interface InquiryCreateData {
   phone: string;
   message: string;
   vehicleId?: string;
+}
+
+export interface InquiryResponse {
+  id: string;
+  message: string;
 }
 
 export interface InquirySummary {
@@ -110,9 +127,14 @@ export interface InquirySummary {
   updatedAt: string;
 }
 
-export async function createInquiry(data: InquiryCreateData) {
+export async function createInquiry(data: InquiryCreateData): Promise<InquiryResponse> {
   return apiFetch<{ id: string; message: string }>("/api/inquiries", {
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+export async function getInquiries(): Promise<InquirySummary[]> {
+  const response = await apiFetch<{ data: InquirySummary[] }>("/api/inquiries");
+  return response.data ?? [];
 }

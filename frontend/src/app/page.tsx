@@ -68,7 +68,7 @@ export default async function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredVehicles.slice(0, 8).map((vehicle) => (
+            {featuredVehicles && featuredVehicles.slice(0, 8).map((vehicle) => (
               <VehicleCard key={vehicle.id} vehicle={vehicle} />
             ))}
           </div>
