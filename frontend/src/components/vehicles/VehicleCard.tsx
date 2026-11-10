@@ -16,6 +16,7 @@ export default function VehicleCard({ vehicle }: VehicleCardProps) {
             src={vehicle.photoUrl ?? `https://picsum.photos/seed/${vehicle.id.slice(0, 8)}/800/500`}
             alt={`${vehicle.make} ${vehicle.model}`}
             fill
+            sizes="(min-width: 1024px) 33vw, 100vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
           <span

@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getVehicles } from "@/lib/api";
+import { getVehicles, VehicleSummary } from "@/lib/api";
 import VehicleCard from "@/components/vehicles/VehicleCard";
-import { formatPriceCOP } from "@/lib/utils";
 import { Search, X, ChevronDown } from "lucide-react";
 
 interface FilterValues {
@@ -16,6 +15,7 @@ interface FilterValues {
   yearMin: string;
   yearMax: string;
   mileageMin: string;
+  mileageMax: string;
   sortBy: string;
   page: string;
 }
@@ -29,30 +29,54 @@ const DEFAULT_FILTERS: FilterValues = {
   yearMin: "",
   yearMax: "",
   mileageMin: "",
+  mileageMax: "",
   sortBy: "createdAt_desc",
   page: "1",
 };
+
+// Mapeo de valores del UI a valores de la API
+const bodyTypeMap: Record<string, string> = {
+  "Sedán": "AUTO",
+  "SUV": "SUV",
+  "Camioneta": "CAMIONETA",
+};
+
+function filtersToQueryParams(filters: FilterValues) {
+  const params: { [key: string]: string } = {};
+
+  if (filters.bodyType) {
+    params.bodyType = bodyTypeMap[filters.bodyType] || filters.bodyType;
+  }
+  if (filters.condition) params.condition = filters.condition;
+  if (filters.make) params.make = filters.make;
+  if (filters.priceMin) params.priceMin = filters.priceMin;
+  if (filters.priceMax) params.priceMax = filters.priceMax;
+  if (filters.yearMin) params.yearMin = filters.yearMin;
+  if (filters.yearMax) params.yearMax = filters.yearMax;
+  if (filters.mileageMin) params.mileageMin = filters.mileageMin;
+  if (filters.mileageMax) params.mileageMax = filters.mileageMax;
+  if (filters.sortBy && filters.sortBy !== "createdAt_desc") {
+    params.sortBy = filters.sortBy;
+  }
+  if (filters.page && filters.page !== "1") params.page = filters.page;
+
+  return params;
+}
 
 export default function CatalogoPage() {
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
 
-  const query = new URLSearchParams();
-  if (filters.bodyType) query.set("bodyType", filters.bodyType);
-  if (filters.condition) query.set("condition", filters.condition);
-  if (filters.make) query.set("make", filters.make);
-  if (filters.priceMin) query.set("priceMin", filters.priceMin);
-  if (filters.priceMax) query.set("priceMax", filters.priceMax);
-  if (filters.yearMin) query.set("yearMin", filters.yearMin);
-  if (filters.yearMax) query.set("yearMax", filters.yearMax);
-  if (filters.mileageMin) query.set("mileageMin", filters.mileageMin);
-  if (filters.sortBy !== "createdAt_desc") query.set("sortBy", filters.sortBy);
-  if (filters.page !== "1") query.set("page", filters.page);
+  const queryParams = filtersToQueryParams(filters);
+  const queryKey = ["vehicles", JSON.stringify(queryParams)];
 
-  const { data: vehicles, isLoading, isError } = useQuery({
-    queryKey: ["vehicles", query.toString()],
-    queryFn: () => getVehicles(Object.fromEntries(query.entries())),
+  const { data: vehicles, isLoading, isError } = useQuery<VehicleSummary[]>({
+    queryKey,
+    queryFn: () => getVehicles(queryParams),
     staleTime: 60_000,
+    retry: 1,
+    retryDelay: 1000,
+    refetchOnMount: true,
   });
 
   const handleChange = (field: keyof FilterValues, value: string) => {

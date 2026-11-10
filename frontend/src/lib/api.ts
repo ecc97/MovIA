@@ -50,12 +50,18 @@ export interface VehicleList {
   };
 }
 
+export interface VehiclePhoto {
+  id?: string;
+  url: string;
+  order?: number;
+}
+
 export interface VehicleDetail extends VehicleSummary {
   description: string | null;
   fuel: string;
   transmission: string;
   color: string;
-  photos: { id: string; url: string; order: number }[];
+  photos: VehiclePhoto[];
   createdAt: string;
   updatedAt: string;
 }

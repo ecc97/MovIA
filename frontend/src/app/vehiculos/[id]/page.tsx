@@ -1,10 +1,6 @@
-"use client";
-
-import { useQuery } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
+import { getVehicle, VehicleDetail } from "@/lib/api";
 import Link from "next/link";
 import Image from "next/image";
-import { getVehicle, VehicleDetail } from "@/lib/api";
 import { formatPriceCOP, getWhatsAppLink, formatDate } from "@/lib/utils";
 import {
   Gauge,
@@ -13,43 +9,20 @@ import {
   Palette,
   Calendar,
   ArrowLeft,
-  Phone,
   MessageCircle,
 } from "lucide-react";
 import InquiryForm from "@/components/inquiries/InquiryForm";
 
-export default function VehiculoDetallePage() {
-  const params = useParams<{ id: string }>();
-  const vehicleId = params?.id ?? "";
+export default async function VehiculoDetallePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
-  const { data: vehicle, isLoading, error } = useQuery<VehicleDetail>({
-    queryKey: ["vehicle", vehicleId],
-    queryFn: () => getVehicle(vehicleId),
-    staleTime: 30_000,
-    enabled: !!vehicleId,
-  });
+  let vehicle: VehicleDetail | null = null;
+  let error: string | null = null;
 
-  const whatsappMsg = encodeURIComponent(
-    `Hola, estoy interesado en el ${vehicle?.make} ${vehicle?.model} ${vehicle?.year}. ¿Podrían darme más información?`
-  );
-
-  const specs = [
-    { icon: Gauge, label: "Kilometraje", value: `${vehicle?.mileage.toLocaleString("es-CO")} km` },
-    { icon: Fuel, label: "Combustible", value: vehicle?.fuel ?? "—" },
-    { icon: Settings, label: "Transmisión", value: vehicle?.transmission ?? "—" },
-    { icon: Palette, label: "Color", value: vehicle?.color ?? "—" },
-    { icon: Calendar, label: "Año", value: vehicle?.year?.toString() ?? "—" },
-    { icon: Calendar, label: "Publicado", value: vehicle?.createdAt ? formatDate(vehicle.createdAt) : "—" },
-  ];
-
-  if (isLoading) {
-    return (
-      <div className="container-movia mx-auto px-4 py-12">
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin w-10 h-10 border-4 border-dorado border-t-transparent rounded-full" />
-        </div>
-      </div>
-    );
+  try {
+    vehicle = await getVehicle(id);
+  } catch (e) {
+    error = e instanceof Error ? e.message : "Error al cargar el vehículo";
   }
 
   if (error || !vehicle) {
@@ -57,7 +30,7 @@ export default function VehiculoDetallePage() {
       <div className="container-movia mx-auto px-4 py-12">
         <div className="bg-error/10 border border-error/30 rounded-card p-6 text-center">
           <p className="text-error font-semibold">Vehículo no encontrado</p>
-          <p className="text-gray-600 mt-2">{error instanceof Error ? error.message : ""}</p>
+          <p className="text-gray-600 mt-2">{error ?? ""}</p>
           <Link href="/catalogo" className="btn-secondary inline-block mt-4">
             Volver al catálogo
           </Link>
@@ -65,6 +38,19 @@ export default function VehiculoDetallePage() {
       </div>
     );
   }
+
+  const specs = [
+    { icon: Gauge, label: "Kilometraje", value: `${vehicle.mileage.toLocaleString("es-CO")} km` },
+    { icon: Fuel, label: "Combustible", value: vehicle.fuel ?? "—" },
+    { icon: Settings, label: "Transmisión", value: vehicle.transmission ?? "—" },
+    { icon: Palette, label: "Color", value: vehicle.color ?? "—" },
+    { icon: Calendar, label: "Año", value: vehicle.year?.toString() ?? "—" },
+    { icon: Calendar, label: "Publicado", value: vehicle.createdAt ? formatDate(vehicle.createdAt) : "—" },
+  ];
+
+  const whatsappMsg = encodeURIComponent(
+    `Hola, estoy interesado en el ${vehicle.make} ${vehicle.model} ${vehicle.year}. ¿Podrían darme más información?`
+  );
 
   return (
     <div className="container-movia mx-auto px-4 py-8">
@@ -102,10 +88,11 @@ export default function VehiculoDetallePage() {
                   <Image
                     src={
                       vehicle.photos[0]?.url ??
-                      `https://picsum.photos/seed/${vehicleId.slice(0, 8)}/1200/800`
+                      `https://picsum.photos/seed/${vehicle.id.slice(0, 8)}/1200/800`
                     }
                     alt={`${vehicle.make} ${vehicle.model}`}
                     fill
+                    sizes="(min-width: 1024px) 67vw, 100vw"
                     className="object-cover"
                     priority
                   />
@@ -114,13 +101,14 @@ export default function VehiculoDetallePage() {
                   <div className="grid grid-cols-4 gap-2">
                     {vehicle.photos.slice(1, 5).map((photo, idx) => (
                       <div
-                        key={`${photo.id ?? photo.url}-${idx}`}
+                        key={`${photo.id ?? idx}-${idx}`}
                         className="relative h-24 rounded-btn overflow-hidden bg-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
                       >
                         <Image
                           src={photo.url}
                           alt={`${vehicle.make} ${vehicle.model} foto ${idx + 2}`}
                           fill
+                          sizes="(min-width: 1024px) calc((100vw - 32px) / 4), 25%"
                           className="object-cover"
                         />
                       </div>
@@ -131,9 +119,10 @@ export default function VehiculoDetallePage() {
             ) : (
               <div className="relative h-72 md:h-96 rounded-card overflow-hidden bg-gray-200">
                 <Image
-                  src={`https://picsum.photos/seed/${vehicleId.slice(0, 8)}/1200/800`}
+                  src={`https://picsum.photos/seed/${vehicle.id.slice(0, 8)}/1200/800`}
                   alt={`${vehicle.make} ${vehicle.model}`}
                   fill
+                  sizes="100vw"
                   className="object-cover"
                 />
               </div>
