@@ -10,6 +10,12 @@
   --color-exito: #24865A;
   --color-error: #C64D45;
   --color-pendiente: #D99A27;
+  --color-azul: #3B82F6;
+  --color-azul-100: #DBEAFE;
+  --color-azul-800: #1E40AF;
+  --color-purpura: #8B5CF6;
+  --color-purpura-100: #EDE9FE;
+  --color-purpura-800: #5B21B6;
 
   --font-family-sora: "Sora", sans-serif;
   --font-family-dm-sans: "DM Sans", sans-serif;
@@ -101,7 +107,7 @@
   }
 
   .badge-en-contacto {
-    @apply bg-blue-500 text-blanco text-xs font-medium px-2 py-1 rounded-full;
+    @apply bg-azul-100 text-azul-800 text-xs font-medium px-2 py-1 rounded-full;
   }
 
   .badge-en-seguimiento {

@@ -140,7 +140,31 @@ export async function createInquiry(data: InquiryCreateData): Promise<InquiryRes
   });
 }
 
-export async function getInquiries(): Promise<InquirySummary[]> {
-  const response = await apiFetch<{ data: InquirySummary[] }>("/api/inquiries");
-  return response.data ?? [];
+export async function getInquiries(): Promise<{ items: InquirySummary[]; total: number }> {
+  const response = await apiFetch<{ items: InquirySummary[]; total: number }>("/api/inquiries");
+  return response;
+}
+
+export interface LoginResponse {
+  data: {
+    id: string;
+    name: string;
+    email: string;
+    role: "ADMIN" | "ASESOR";
+  };
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: "ADMIN" | "ASESOR";
+}
+
+export async function logout(): Promise<void> {
+  const response = await fetch(`${API_URL}/api/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("Error al cerrar sesión");
 }

@@ -40,7 +40,9 @@ export default function RootLayout({
       <body className="font-dm-sans antialiased flex flex-col min-h-screen">
         <Header />
         <main className="flex-1">
-          <Providers>{children}</Providers>
+          <Providers>
+            {children}
+          </Providers>
         </main>
         <Footer />
       </body>
