@@ -1,47 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
-import { LoginResponse } from "@/lib/api";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { login, LoginResponse } from "@/lib/api";
+import { useAuthSafe } from "@/components/auth/AuthProvider";
 
-interface LoginForm {
-  email: string;
-  password: string;
-}
+const loginSchema = z.object({
+  email: z.email("Ingresa un correo electrónico válido"),
+  password: z.string().min(1, "La contraseña es obligatoria"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [form, setForm] = useState<LoginForm>({ email: "", password: "" });
-  const [errors, setErrors] = useState<string[]>([]);
+  const queryClient = useQueryClient();
+  const { user, isLoading: isAuthLoading } = useAuthSafe();
 
-  const mutation = useMutation<void, Error, LoginForm>({
-    mutationFn: async (data) => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Error de autenticación" }));
-        throw new Error(error.message || "Credenciales inválidas");
-      }
-    },
-    onSuccess: () => {
-      router.push("/panel");
+  const mutation = useMutation<LoginResponse, Error, LoginFormValues>({
+    mutationFn: (data) => login(data.email, data.password),
+    onSuccess: (response) => {
+      queryClient.setQueryData(["authMe"], response.data);
+      router.replace("/panel");
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrors([]);
-    mutation.mutate(form);
-  };
+  // Si ya hay sesión activa, no mostrar el formulario
+  useEffect(() => {
+    if (!isAuthLoading && user) {
+      router.replace("/panel");
+    }
+  }, [user, isAuthLoading, router]);
 
-  const handleChange = (field: keyof LoginForm, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const onSubmit = (values: LoginFormValues) => {
+    mutation.mutate(values);
   };
 
   return (
@@ -56,7 +61,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-grafito">
@@ -64,15 +69,18 @@ export default function LoginPage() {
               </label>
               <input
                 id="email"
-                name="email"
                 type="email"
                 autoComplete="email"
-                required
-                value={form.email}
-                onChange={(e) => handleChange("email", e.target.value)}
+                {...register("email")}
+                aria-invalid={!!errors.email}
                 className="mt-1 block w-full px-3 py-2 border border-gris-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-dorado focus:border-dorado"
-                placeholder="tú@ejemplo.com"
+                placeholder="tu@ejemplo.com"
               />
+              {errors.email && (
+                <p className="mt-1 text-sm text-error" role="alert">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
             <div>
@@ -81,31 +89,24 @@ export default function LoginPage() {
               </label>
               <input
                 id="password"
-                name="password"
                 type="password"
                 autoComplete="current-password"
-                required
-                value={form.password}
-                onChange={(e) => handleChange("password", e.target.value)}
+                {...register("password")}
+                aria-invalid={!!errors.password}
                 className="mt-1 block w-full px-3 py-2 border border-gris-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-dorado focus:border-dorado"
                 placeholder="••••••••"
               />
+              {errors.password && (
+                <p className="mt-1 text-sm text-error" role="alert">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
           </div>
 
           {mutation.isError && (
-            <div className="bg-error/10 border border-error/30 rounded-btn p-3 text-sm text-error">
+            <div className="bg-error/10 border border-error/30 rounded-btn p-3 text-sm text-error" role="alert">
               {mutation.error?.message || "Credenciales inválidas"}
-            </div>
-          )}
-
-          {errors.length > 0 && (
-            <div className="bg-error/10 border border-error/30 rounded-btn p-3">
-              <ul className="text-sm text-error list-disc list-inside">
-                {errors.map((error, i) => (
-                  <li key={i}>{error}</li>
-                ))}
-              </ul>
             </div>
           )}
 

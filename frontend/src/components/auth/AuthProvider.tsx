@@ -1,9 +1,9 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@/lib/api";
-import { logout as logoutApi } from "@/lib/api";
+import { getMe, logout as logoutApi } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -40,16 +40,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: user, isLoading, isError, refetch } = useQuery<User | null>({
     queryKey: ["authMe"],
     queryFn: async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
+      try {
+        return await getMe();
+      } catch {
         return null;
       }
-
-      const data = await response.json();
-      return data.data ?? null;
     },
     staleTime: 5 * 60 * 1000,
     retry: false,

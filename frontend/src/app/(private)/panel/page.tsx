@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { VehicleSummary } from "@/lib/api";
-import { formatPriceCOP } from "@/lib/utils";
 
 interface ApiVehiclesResponse {
   data: VehicleSummary[];
@@ -14,8 +13,16 @@ interface ApiVehiclesResponse {
   };
 }
 
+interface InquiryRow {
+  id: string;
+  name: string;
+  email: string;
+  status: "NUEVA" | "EN_CONTACTO" | "EN_SEGUIMIENTO" | "VENDIDA" | "DESCARTADA";
+  createdAt: string;
+}
+
 interface ApiInquiriesResponse {
-  items: any[];
+  items: InquiryRow[];
   total: number;
 }
 
@@ -42,7 +49,7 @@ function StatsCard({ title, value, subtitle, icon }: {
 }
 
 export default function PanelDashboard() {
-  const { data: vehiclesData, isLoading: loadingVehicles } = useQuery<ApiVehiclesResponse>({
+  const { data: vehiclesData } = useQuery<ApiVehiclesResponse>({
     queryKey: ["vehicles", { status: "PUBLICADO" }],
     queryFn: async () => {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vehicles`, {
@@ -130,7 +137,7 @@ export default function PanelDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {recentInquiries.map((inq: any) => (
+                {recentInquiries.map((inq) => (
                   <tr key={inq.id} className="border-b border-gris-200 last:border-0">
                     <td className="px-4 py-2">{inq.name}</td>
                     <td className="px-4 py-2">{inq.email}</td>

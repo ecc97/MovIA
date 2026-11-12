@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Providers } from './providers';
 import './globals.css';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
 
 export const metadata: Metadata = {
   title: 'MOVIA - Encuentra tu próximo vehículo',
@@ -38,13 +36,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-dm-sans antialiased flex flex-col min-h-screen">
-        <Header />
-        <main className="flex-1">
-          <Providers>
-            {children}
-          </Providers>
-        </main>
-        <Footer />
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

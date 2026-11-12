@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import Sidebar from "@/components/panel/Sidebar";
@@ -12,18 +12,21 @@ export default function PanelLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Redirect to login if not authenticated
-  if (isLoading) {
+  const shouldRedirect = !isLoading && (isError || !user);
+
+  // Redirección fuera del render (evita setState-in-render)
+  useEffect(() => {
+    if (shouldRedirect) {
+      router.replace("/login");
+    }
+  }, [shouldRedirect, router]);
+
+  if (isLoading || isError || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-fondo-claro">
         <div className="animate-spin w-8 h-8 border-4 border-dorado border-t-transparent rounded-full" />
       </div>
     );
-  }
-
-  if (isError || !user) {
-    router.push("/login");
-    return null;
   }
 
   return (

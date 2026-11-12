@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,6 +17,7 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   isDefault?: boolean;
+  adminOnly?: boolean;
 }
 
 interface SidebarProps {
@@ -30,7 +31,7 @@ export default function Sidebar({ role }: SidebarProps) {
 
   const navItems: NavItem[] = [
     { name: "Dashboard", href: "/panel", icon: LayoutDashboard, isDefault: true },
-    { name: "Inventario", href: "/panel/inventario", icon: Car },
+    { name: "Inventario", href: "/panel/inventario", icon: Car, adminOnly: true },
     { name: "Consultas", href: "/panel/consultas", icon: MessageSquare },
   ];
 
@@ -47,7 +48,7 @@ export default function Sidebar({ role }: SidebarProps) {
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="p-2 rounded-btn bg-grafito text-blanco hover:bg-gris-700 focus:outline-none focus:ring-2 focus:ring-dorado"
-          aria-label="Abrir menú"
+          aria-label="Abrir menÃº"
         >
           {mobileOpen ? (
             <ChevronDown size={20} className="rotate-180" />
@@ -85,7 +86,7 @@ export default function Sidebar({ role }: SidebarProps) {
             className="flex items-center w-full gap-3 px-3 py-2 rounded-md text-sm font-medium text-blanco hover:bg-gris-700 transition-colors"
           >
             <LogOut size={20} />
-            Cerrar sesión
+            Cerrar sesiÃ³n
           </button>
         </nav>
       </aside>
@@ -100,8 +101,8 @@ interface SidebarLinkProps {
 }
 
 function SidebarLink({ item, isActive, role }: SidebarLinkProps) {
-  // Hide inventory links for ASESOR
-  if (item.name === "Inventario" && role === "ASESOR") {
+  // El inventario es solo ADMIN (protegido ademÃ¡s por el layout (admin))
+  if (item.adminOnly && role !== "ADMIN") {
     return null;
   }
 
@@ -132,7 +133,7 @@ function MobileNav({ role, onLogout }: MobileNavProps) {
 
   const navItems: NavItem[] = [
     { name: "Dashboard", href: "/panel", icon: LayoutDashboard },
-    { name: "Inventario", href: "/panel/inventario", icon: Car },
+    { name: "Inventario", href: "/panel/inventario", icon: Car, adminOnly: true },
     { name: "Consultas", href: "/panel/consultas", icon: MessageSquare },
   ];
 
@@ -140,8 +141,8 @@ function MobileNav({ role, onLogout }: MobileNavProps) {
     <div className="flex flex-col h-full">
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => {
-          // Hide inventory links for ASESOR
-          if (item.name === "Inventario" && role === "ASESOR") {
+          // El inventario es solo ADMIN (protegido ademÃ¡s por el layout (admin))
+          if (item.adminOnly && role !== "ADMIN") {
             return null;
           }
 
@@ -171,7 +172,7 @@ function MobileNav({ role, onLogout }: MobileNavProps) {
         className="mt-4 flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-blanco hover:bg-gris-700 w-full"
       >
         <LogOut size={20} />
-        Cerrar sesión
+        Cerrar sesiÃ³n
       </button>
     </div>
   );

@@ -161,6 +161,20 @@ export interface User {
   role: "ADMIN" | "ASESOR";
 }
 
+// Auth
+
+export async function login(email: string, password: string): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function getMe(): Promise<User> {
+  const response = await apiFetch<{ data: User }>("/api/auth/me");
+  return response.data;
+}
+
 export async function logout(): Promise<void> {
   const response = await fetch(`${API_URL}/api/auth/logout`, {
     method: "POST",

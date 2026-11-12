@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { VehicleSummary } from "@/lib/api";
 import { formatPriceCOP } from "@/lib/utils";
-import { Edit, Trash, Save, X, BadgeAlert, CheckCircle, Archive } from "lucide-react";
+import { Edit, Save, X, Archive } from "lucide-react";
 import { useState } from "react";
 
 interface VehiclesResponse {
@@ -80,7 +80,7 @@ export default function InventarioPage() {
 
   const handleStatusChange = (vehicle: VehicleSummary, newStatus: string) => {
     if (editVehicle) {
-      setEditVehicle({ ...editVehicle, status: newStatus as any });
+      setEditVehicle({ ...editVehicle, status: newStatus as VehicleSummary["status"] });
     }
   };
 

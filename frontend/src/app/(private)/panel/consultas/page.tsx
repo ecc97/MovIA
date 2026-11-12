@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Edit, Save, X, CheckCircle, AlertCircle, ChevronDown } from "lucide-react";
+import { Edit, Save, X } from "lucide-react";
 
 interface Inquiry {
   id: string;
@@ -200,8 +200,8 @@ function InquiryRow({
             onChange={(e) =>
               setEditData({
                 ...editData,
-                vehicle: { ...editData.vehicle, make: e.target.value },
-              } as any)
+                vehicle: { make: e.target.value, model: editData.vehicle?.model ?? "" },
+              })
             }
             placeholder="Marca"
           />
@@ -218,7 +218,7 @@ function InquiryRow({
             className="border border-gris-300 rounded px-2 py-1 text-sm"
             value={editData.status ?? inquiry.status}
             onChange={(e) =>
-              setEditData({ ...editData, status: e.target.value as any } as any)
+              setEditData({ ...editData, status: e.target.value as Inquiry["status"] })
             }
           >
             {Object.entries(STATUS_CONFIG).map(([status, config]) => (

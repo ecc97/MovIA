@@ -66,14 +66,7 @@ export default function Header() {
                   <span>Cerrar sesión</span>
                 </button>
               </div>
-            ) : (
-              <Link
-                href="/login"
-                className="text-sm font-medium hover:text-dorado transition-colors"
-              >
-                Ingresar
-              </Link>
-            )}
+            ) : null}
           </nav>
 
           <div className="md:hidden flex items-center gap-2">
@@ -101,15 +94,7 @@ export default function Header() {
                   )}
                 </button>
               </>
-            ) : (
-              <Link
-                href="/login"
-                className="p-2 rounded-btn hover:bg-gris-700"
-                aria-label="Ingresar"
-              >
-                <User size={20} />
-              </Link>
-            )}
+            ) : null}
             <button
               className="p-2 rounded-btn focus:outline-none focus:ring-2 focus:ring-dorado"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -171,15 +156,7 @@ export default function Header() {
                   Cerrar sesión
                 </button>
               </>
-            ) : (
-              <Link
-                href="/login"
-                className="text-sm font-medium hover:text-dorado transition-colors px-2 py-1"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Ingresar
-              </Link>
-            )}
+            ) : null}
           </nav>
         )}
       </div>
