@@ -6,8 +6,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { login, LoginResponse } from "@/lib/api";
-import { useAuthSafe } from "@/components/auth/AuthProvider";
+import { login } from "@/features/auth/services/auth.service";
+import type { LoginResponse } from "@/features/auth/types";
+import { useAuthSafe } from "@/features/auth/hooks/useAuth";
 
 const loginSchema = z.object({
   email: z.email("Ingresa un correo electrónico válido"),

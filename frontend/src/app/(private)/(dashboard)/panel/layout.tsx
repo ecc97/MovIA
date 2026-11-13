@@ -1,27 +1,16 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth/AuthProvider";
-import Sidebar from "@/components/panel/Sidebar";
+import { ReactNode, useState } from "react";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import Sidebar from "@/components/layout/Sidebar";
 import { Menu } from "lucide-react";
-import { useState } from "react";
 
 export default function PanelLayout({ children }: { children: ReactNode }) {
-  const { user, isLoading, isError } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const shouldRedirect = !isLoading && (isError || !user);
-
-  // Redirección fuera del render (evita setState-in-render)
-  useEffect(() => {
-    if (shouldRedirect) {
-      router.replace("/login");
-    }
-  }, [shouldRedirect, router]);
-
-  if (isLoading || isError || !user) {
+  // El guard de sesión vive en (dashboard)/layout.tsx; aquí solo se renderiza el panel
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-fondo-claro">
         <div className="animate-spin w-8 h-8 border-4 border-dorado border-t-transparent rounded-full" />

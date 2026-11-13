@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,7 +10,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import type { Role } from "@/types";
 
 interface NavItem {
   name: string;
@@ -21,7 +22,7 @@ interface NavItem {
 }
 
 interface SidebarProps {
-  role: "ADMIN" | "ASESOR";
+  role: Role;
 }
 
 export default function Sidebar({ role }: SidebarProps) {
@@ -48,7 +49,7 @@ export default function Sidebar({ role }: SidebarProps) {
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="p-2 rounded-btn bg-grafito text-blanco hover:bg-gris-700 focus:outline-none focus:ring-2 focus:ring-dorado"
-          aria-label="Abrir menÃº"
+          aria-label="Abrir menú"
         >
           {mobileOpen ? (
             <ChevronDown size={20} className="rotate-180" />
@@ -86,7 +87,7 @@ export default function Sidebar({ role }: SidebarProps) {
             className="flex items-center w-full gap-3 px-3 py-2 rounded-md text-sm font-medium text-blanco hover:bg-gris-700 transition-colors"
           >
             <LogOut size={20} />
-            Cerrar sesiÃ³n
+            Cerrar sesión
           </button>
         </nav>
       </aside>
@@ -97,11 +98,11 @@ export default function Sidebar({ role }: SidebarProps) {
 interface SidebarLinkProps {
   item: NavItem;
   isActive: boolean;
-  role: "ADMIN" | "ASESOR";
+  role: Role;
 }
 
 function SidebarLink({ item, isActive, role }: SidebarLinkProps) {
-  // El inventario es solo ADMIN (protegido ademÃ¡s por el layout (admin))
+  // El inventario es solo ADMIN (protegido además por el layout (admin))
   if (item.adminOnly && role !== "ADMIN") {
     return null;
   }
@@ -124,7 +125,7 @@ function SidebarLink({ item, isActive, role }: SidebarLinkProps) {
 }
 
 interface MobileNavProps {
-  role: "ADMIN" | "ASESOR";
+  role: Role;
   onLogout: () => void;
 }
 
@@ -141,7 +142,7 @@ function MobileNav({ role, onLogout }: MobileNavProps) {
     <div className="flex flex-col h-full">
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => {
-          // El inventario es solo ADMIN (protegido ademÃ¡s por el layout (admin))
+          // El inventario es solo ADMIN (protegido además por el layout (admin))
           if (item.adminOnly && role !== "ADMIN") {
             return null;
           }
@@ -172,7 +173,7 @@ function MobileNav({ role, onLogout }: MobileNavProps) {
         className="mt-4 flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-blanco hover:bg-gris-700 w-full"
       >
         <LogOut size={20} />
-        Cerrar sesiÃ³n
+        Cerrar sesión
       </button>
     </div>
   );

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createInquiry, InquiryCreateData } from '@/lib/api';
+import { createInquiry } from '../services/inquiry.service';
 import { Mail, User, Phone, MessageSquare } from 'lucide-react';
 
 const inquirySchema = z.object({
@@ -54,10 +54,6 @@ export default function InquiryForm({
       vehicleId: vehicleId || undefined,
     });
   };
-
-  const subject = prefillMake && prefillModel
-    ? `Consulta sobre ${prefillMake} ${prefillModel} ${prefillYear ?? ''}`
-    : 'Consulta general MOVIA';
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

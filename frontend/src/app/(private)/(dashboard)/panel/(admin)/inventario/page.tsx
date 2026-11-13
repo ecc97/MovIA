@@ -1,65 +1,20 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { VehicleSummary } from "@/lib/api";
-import { formatPriceCOP } from "@/lib/utils";
-import { Edit, Save, X, Archive } from "lucide-react";
 import { useState } from "react";
-
-interface VehiclesResponse {
-  data: VehicleSummary[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+import { formatPriceCOP } from "@/lib/utils";
+import {
+  useUpdateVehicle,
+  useUpdateVehicleStatus,
+  useVehiclesPage,
+} from "@/features/vehicles/hooks/useVehicles";
+import type { VehicleStatus, VehicleSummary } from "@/features/vehicles/types";
+import { Edit, Save, X, Archive } from "lucide-react";
 
 export default function InventarioPage() {
-  const queryClient = useQueryClient();
+  const { data, isLoading, isError } = useVehiclesPage();
+  const updateMutation = useUpdateVehicle();
+  const statusMutation = useUpdateVehicleStatus();
   const [editVehicle, setEditVehicle] = useState<VehicleSummary | null>(null);
-
-  const { data, isLoading, isError } = useQuery<VehiclesResponse>({
-    queryKey: ["vehicles", "all"],
-    queryFn: async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vehicles`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Error al cargar");
-      return response.json();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (vehicle: VehicleSummary) => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vehicles/${vehicle.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(vehicle),
-      });
-      if (!response.ok) throw new Error("Error al actualizar");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-      setEditVehicle(null);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vehicles/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Error al eliminar");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-    },
-  });
 
   const vehicles = data?.data ?? [];
   const pagination = data?.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 0 };
@@ -70,7 +25,15 @@ export default function InventarioPage() {
 
   const handleSave = () => {
     if (editVehicle) {
-      updateMutation.mutate(editVehicle);
+      const { id, ...data } = editVehicle;
+      updateMutation.mutate(
+        { id, data },
+        {
+          onSuccess: () => {
+            setEditVehicle(null);
+          },
+        }
+      );
     }
   };
 
@@ -78,10 +41,14 @@ export default function InventarioPage() {
     setEditVehicle(null);
   };
 
-  const handleStatusChange = (vehicle: VehicleSummary, newStatus: string) => {
-    if (editVehicle) {
-      setEditVehicle({ ...editVehicle, status: newStatus as VehicleSummary["status"] });
+  const handleStatusChange = (vehicle: VehicleSummary, newStatus: VehicleStatus) => {
+    if (editVehicle?.id === vehicle.id) {
+      setEditVehicle({ ...editVehicle, status: newStatus });
     }
+  };
+
+  const handleArchive = (vehicle: VehicleSummary) => {
+    statusMutation.mutate({ id: vehicle.id, status: "ARCHIVADO" });
   };
 
   if (isLoading) {
@@ -110,6 +77,12 @@ export default function InventarioPage() {
           </p>
         </div>
       </div>
+
+      {(updateMutation.isError || statusMutation.isError) && (
+        <div className="bg-error/10 border border-error/30 rounded-card p-3 text-sm text-error" role="alert">
+          {updateMutation.error?.message ?? statusMutation.error?.message}
+        </div>
+      )}
 
       {vehicles.length === 0 ? (
         <div className="text-center py-12 text-gris-500">
@@ -141,7 +114,8 @@ export default function InventarioPage() {
                   handleSave={handleSave}
                   handleCancel={handleCancel}
                   handleStatusChange={handleStatusChange}
-                  updateMutation={updateMutation}
+                  handleArchive={handleArchive}
+                  isSaving={updateMutation.isPending || statusMutation.isPending}
                 />
               ))}
             </tbody>
@@ -160,8 +134,9 @@ interface VehicleRowProps {
   handleEdit: (v: VehicleSummary) => void;
   handleSave: () => void;
   handleCancel: () => void;
-  handleStatusChange: (v: VehicleSummary, s: string) => void;
-  updateMutation: { mutate: (v: VehicleSummary) => void; isPending: boolean };
+  handleStatusChange: (v: VehicleSummary, s: VehicleStatus) => void;
+  handleArchive: (v: VehicleSummary) => void;
+  isSaving: boolean;
 }
 
 function VehicleRow({
@@ -173,7 +148,8 @@ function VehicleRow({
   handleSave,
   handleCancel,
   handleStatusChange,
-  updateMutation,
+  handleArchive,
+  isSaving,
 }: VehicleRowProps) {
   return (
     <tr className="border-b border-gris-200 last:border-0 hover:bg-gris-50">
@@ -230,7 +206,7 @@ function VehicleRow({
             className="border border-gris-300 rounded px-2 py-1 text-sm"
             value={editVehicle.status}
             onChange={(e) =>
-              handleStatusChange(editVehicle, e.target.value)
+              handleStatusChange(editVehicle, e.target.value as VehicleStatus)
             }
           >
             <option value="PUBLICADO">PUBLICADO</option>
@@ -247,7 +223,7 @@ function VehicleRow({
             className="border border-gris-300 rounded px-2 py-1 text-sm"
             value={editVehicle.status}
             onChange={(e) =>
-              handleStatusChange(editVehicle, e.target.value)
+              handleStatusChange(editVehicle, e.target.value as VehicleStatus)
             }
           >
             <option value="PUBLICADO">Sí</option>
@@ -261,17 +237,19 @@ function VehicleRow({
         )}
       </td>
       <td className="px-4 py-2 text-center">
-        {isEditing && editVehicle?.id === vehicle.id ? (
+        {isEditing ? (
           <div className="flex gap-2 justify-center">
             <button
               onClick={handleSave}
-              disabled={updateMutation.isPending}
+              disabled={isSaving}
+              aria-label="Guardar cambios"
               className="p-1 text-exito hover:bg-exito/10 rounded full"
             >
               <Save size={16} />
             </button>
             <button
               onClick={handleCancel}
+              aria-label="Cancelar edición"
               className="p-1 text-gris-500 hover:bg-gris-200 rounded full"
             >
               <X size={16} />
@@ -281,12 +259,15 @@ function VehicleRow({
           <div className="flex gap-2 justify-center">
             <button
               onClick={() => handleEdit(vehicle)}
+              aria-label="Editar vehículo"
               className="p-1 text-dorado hover:bg-dorado/10 rounded full"
             >
               <Edit size={16} />
             </button>
             <button
-              onClick={() => handleStatusChange(vehicle, "ARCHIVADO")}
+              onClick={() => handleArchive(vehicle)}
+              disabled={isSaving}
+              aria-label="Archivar vehículo"
               className="p-1 text-gris-500 hover:bg-gris-200 rounded full"
             >
               <Archive size={16} />
@@ -298,7 +279,7 @@ function VehicleRow({
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: VehicleStatus }) {
   const colors: Record<string, string> = {
     PUBLICADO: "bg-exito text-blanco",
     ARCHIVADO: "bg-gris-500 text-blanco",

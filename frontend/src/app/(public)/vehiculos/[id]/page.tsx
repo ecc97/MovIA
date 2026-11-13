@@ -1,4 +1,5 @@
-import { getVehicle, VehicleDetail } from "@/lib/api";
+import { getVehicle } from "@/features/vehicles/services/vehicle.service";
+import type { VehicleDetail } from "@/features/vehicles/types";
 import Link from "next/link";
 import Image from "next/image";
 import { formatPriceCOP, getWhatsAppLink, formatDate } from "@/lib/utils";
@@ -11,7 +12,7 @@ import {
   ArrowLeft,
   MessageCircle,
 } from "lucide-react";
-import InquiryForm from "@/components/inquiries/InquiryForm";
+import InquiryForm from "@/features/inquiries/components/InquiryForm";
 
 export default async function VehiculoDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

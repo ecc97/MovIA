@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { VehicleSummary } from "@/lib/api";
+import { VehicleSummary } from "@/features/vehicles/types";
 import { formatPriceCOP } from "@/lib/utils";
 
 interface VehicleCardProps {

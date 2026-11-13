@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getVehicles, VehicleSummary } from "@/lib/api";
-import VehicleCard from "@/components/vehicles/VehicleCard";
+import { useVehicles } from "@/features/vehicles/hooks/useVehicles";
+import type { VehicleQueryParams } from "@/features/vehicles/types";
+import VehicleCard from "@/features/vehicles/components/VehicleCard";
 import { Search, X, ChevronDown } from "lucide-react";
 
 interface FilterValues {
@@ -41,8 +41,8 @@ const bodyTypeMap: Record<string, string> = {
   "Camioneta": "CAMIONETA",
 };
 
-function filtersToQueryParams(filters: FilterValues) {
-  const params: { [key: string]: string } = {};
+function filtersToQueryParams(filters: FilterValues): VehicleQueryParams {
+  const params: VehicleQueryParams = {};
 
   if (filters.bodyType) {
     params.bodyType = bodyTypeMap[filters.bodyType] || filters.bodyType;
@@ -68,16 +68,7 @@ export default function CatalogoPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const queryParams = filtersToQueryParams(filters);
-  const queryKey = ["vehicles", JSON.stringify(queryParams)];
-
-  const { data: vehicles, isLoading, isError } = useQuery<VehicleSummary[]>({
-    queryKey,
-    queryFn: () => getVehicles(queryParams),
-    staleTime: 60_000,
-    retry: 1,
-    retryDelay: 1000,
-    refetchOnMount: true,
-  });
+  const { data: vehicles, isLoading, isError } = useVehicles(queryParams);
 
   const handleChange = (field: keyof FilterValues, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }));

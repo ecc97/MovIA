@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X, User, LogOut, Loader2 } from "lucide-react";
-import { useAuthSafe } from "@/components/auth/AuthProvider";
+import { useAuthSafe } from "@/features/auth/hooks/useAuth";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

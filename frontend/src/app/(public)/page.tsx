@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getVehicles } from "@/lib/api";
-import VehicleCard from "@/components/vehicles/VehicleCard";
+import { getVehicles } from "@/features/vehicles/services/vehicle.service";
+import VehicleCard from "@/features/vehicles/components/VehicleCard";
 import { Search, Car, ShieldCheck, MessageCircle } from "lucide-react";
 
 export default async function HomePage() {

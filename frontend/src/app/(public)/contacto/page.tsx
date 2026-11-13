@@ -1,4 +1,4 @@
-import InquiryForm from '@/components/inquiries/InquiryForm';
+import InquiryForm from '@/features/inquiries/components/InquiryForm';
 
 export default function ContactoPage() {
   return (

@@ -1,30 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { VehicleSummary } from "@/lib/api";
-
-interface ApiVehiclesResponse {
-  data: VehicleSummary[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-interface InquiryRow {
-  id: string;
-  name: string;
-  email: string;
-  status: "NUEVA" | "EN_CONTACTO" | "EN_SEGUIMIENTO" | "VENDIDA" | "DESCARTADA";
-  createdAt: string;
-}
-
-interface ApiInquiriesResponse {
-  items: InquiryRow[];
-  total: number;
-}
+import { useVehicles } from "@/features/vehicles/hooks/useVehicles";
+import { useInquiries } from "@/features/inquiries/hooks/useInquiries";
+import type { InquirySummary } from "@/features/inquiries/types";
+import { Car, LayoutDashboard, MessageSquare, AlertCircle } from "lucide-react";
 
 function StatsCard({ title, value, subtitle, icon }: {
   title: string;
@@ -49,36 +28,18 @@ function StatsCard({ title, value, subtitle, icon }: {
 }
 
 export default function PanelDashboard() {
-  const { data: vehiclesData } = useQuery<ApiVehiclesResponse>({
-    queryKey: ["vehicles", { status: "PUBLICADO" }],
-    queryFn: async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vehicles`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Error al cargar");
-      return response.json();
-    },
-  });
-
-  const { data: inquiriesData, isLoading: loadingInquiries } = useQuery<ApiInquiriesResponse>({
-    queryKey: ["inquiries"],
-    queryFn: async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/inquiries`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Error al cargar");
-      return response.json();
-    },
-  });
+  // GET /api/vehicles solo devuelve PUBLICADO (endpoint público)
+  const { data: vehicles } = useVehicles({ status: "PUBLICADO" });
+  const { data: inquiriesData, isLoading: loadingInquiries } = useInquiries();
 
   const stats = {
-    totalVehicles: vehiclesData?.data?.length ?? 0,
-    publishedVehicles: vehiclesData?.data?.filter((v) => v.status === "PUBLICADO").length ?? 0,
+    totalVehicles: vehicles?.length ?? 0,
+    publishedVehicles: vehicles?.filter((v) => v.status === "PUBLICADO").length ?? 0,
     totalInquiries: inquiriesData?.total ?? 0,
     newInquiries: inquiriesData?.items?.filter((i) => i.status === "NUEVA").length ?? 0,
   };
 
-  const recentInquiries = inquiriesData?.items?.slice(0, 5) ?? [];
+  const recentInquiries: InquirySummary[] = inquiriesData?.items?.slice(0, 5) ?? [];
 
   return (
     <div className="space-y-6">
@@ -102,7 +63,7 @@ export default function PanelDashboard() {
           icon={<Car size={20} />}
         />
         <StatsCard
-          title="Inquiries"
+          title="Consultas"
           value={stats.totalInquiries}
           subtitle="Total"
           icon={<MessageSquare size={20} />}
@@ -158,7 +119,7 @@ export default function PanelDashboard() {
   );
 }
 
-function InquiryStatusBadge({ status }: { status: string }) {
+function InquiryStatusBadge({ status }: { status: InquirySummary["status"] }) {
   const colors: Record<string, string> = {
     NUEVA: "bg-dorado text-grafito",
     EN_CONTACTO: "bg-azul-100 text-azul-800",
@@ -177,6 +138,3 @@ function InquiryStatusBadge({ status }: { status: string }) {
     </span>
   );
 }
-
-// Import icons inline
-import { Car, LayoutDashboard, MessageSquare, AlertCircle } from "lucide-react";
