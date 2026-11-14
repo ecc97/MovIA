@@ -7,10 +7,16 @@ import { z } from "zod";
 export const vehicleQuerySchema = z.object({
   bodyType: z.enum(["AUTO", "SUV", "CAMIONETA"]).optional(),
   condition: z.enum(["NUEVO", "USADO"]).optional(),
+  make: z.string().optional(),
   minPrice: z.coerce.number().int().nonnegative().optional(),
   maxPrice: z.coerce.number().int().nonnegative().optional(),
-  make: z.string().optional(),
-  year: z.coerce.number().int().positive().optional(),
+  yearMin: z.coerce.number().int().min(1900).optional(),
+  yearMax: z.coerce.number().int().min(1900).optional(),
+  mileageMin: z.coerce.number().int().nonnegative().optional(),
+  mileageMax: z.coerce.number().int().nonnegative().optional(),
+  sortBy: z
+    .enum(["createdAt_desc", "price_asc", "price_desc", "year_desc"])
+    .default("createdAt_desc"),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(12),
 });

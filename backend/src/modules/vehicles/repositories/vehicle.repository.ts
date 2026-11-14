@@ -19,7 +19,7 @@ export class VehicleRepository {
         where,
         skip,
         take: query.limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: this.buildOrderBy(query.sortBy),
         include: {
           photos: { select: { url: true, order: true }, orderBy: { order: "asc" } },
         },
@@ -44,6 +44,30 @@ export class VehicleRepository {
     }));
 
     return { items: formatted, total };
+  }
+
+  async findFacets(): Promise<{ years: number[]; makes: string[] }> {
+    const where = { status: "PUBLICADO" as const };
+
+    const [yearRows, makeRows] = await Promise.all([
+      prisma.vehicle.findMany({
+        where,
+        distinct: ["year"],
+        select: { year: true },
+        orderBy: { year: "desc" },
+      }),
+      prisma.vehicle.findMany({
+        where,
+        distinct: ["make"],
+        select: { make: true },
+        orderBy: { make: "asc" },
+      }),
+    ]);
+
+    return {
+      years: yearRows.map((r) => r.year),
+      makes: makeRows.map((r) => r.make),
+    };
   }
 
   async findById(id: string): Promise<VehicleDetail | null> {
@@ -136,7 +160,6 @@ export class VehicleRepository {
     if (q.bodyType) conditions.bodyType = q.bodyType;
     if (q.condition) conditions.condition = q.condition;
     if (q.make) conditions.make = { contains: q.make, mode: "insensitive" as const };
-    if (q.year) conditions.year = q.year;
 
     const priceFilter: Record<string, number> = {};
     if (q.minPrice !== undefined) priceFilter.gte = q.minPrice;
@@ -145,7 +168,31 @@ export class VehicleRepository {
       conditions.price = priceFilter;
     }
 
+    const yearFilter: Record<string, number> = {};
+    if (q.yearMin !== undefined) yearFilter.gte = q.yearMin;
+    if (q.yearMax !== undefined) yearFilter.lte = q.yearMax;
+    if (Object.keys(yearFilter).length > 0) {
+      conditions.year = yearFilter;
+    }
+
+    const mileageFilter: Record<string, number> = {};
+    if (q.mileageMin !== undefined) mileageFilter.gte = q.mileageMin;
+    if (q.mileageMax !== undefined) mileageFilter.lte = q.mileageMax;
+    if (Object.keys(mileageFilter).length > 0) {
+      conditions.mileage = mileageFilter;
+    }
+
     return conditions;
+  }
+
+  private buildOrderBy(sortBy: VehicleQuery["sortBy"]) {
+    const sortMap: Record<string, Record<string, "asc" | "desc">> = {
+      createdAt_desc: { createdAt: "desc" },
+      price_asc: { price: "asc" },
+      price_desc: { price: "desc" },
+      year_desc: { year: "desc" },
+    };
+    return sortMap[sortBy ?? "createdAt_desc"];
   }
 
   private toDetail(v: {

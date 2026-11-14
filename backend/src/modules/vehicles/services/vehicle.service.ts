@@ -9,6 +9,10 @@ export class VehicleService {
     return vehicleRepo.findPublished(query);
   }
 
+  async getFacets(): Promise<{ years: number[]; makes: string[] }> {
+    return vehicleRepo.findFacets();
+  }
+
   async getDetail(id: string): Promise<VehicleDetail> {
     const v = await vehicleRepo.findById(id);
     if (!v) throw new Error("VEHICLE_NOT_FOUND");

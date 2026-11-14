@@ -9,6 +9,7 @@ const router = Router();
 
 // --- Lectura pública (sin auth) ---
 router.get("/", (req, res, next) => void vehicleController.list(req, res, next));
+router.get("/meta", (req, res, next) => void vehicleController.facets(req, res, next));
 router.get("/:id", (req, res, next) => void vehicleController.detail(req, res, next));
 
 // --- CRUD protegido (solo ADMIN) ---

@@ -7,14 +7,16 @@ import {
   useUpdateVehicleStatus,
   useVehiclesPage,
 } from "@/features/vehicles/hooks/useVehicles";
+import VehicleFormModal from "@/features/vehicles/components/VehicleFormModal";
 import type { VehicleStatus, VehicleSummary } from "@/features/vehicles/types";
-import { Edit, Save, X, Archive } from "lucide-react";
+import { Edit, Save, X, Archive, Plus } from "lucide-react";
 
 export default function InventarioPage() {
   const { data, isLoading, isError } = useVehiclesPage();
   const updateMutation = useUpdateVehicle();
   const statusMutation = useUpdateVehicleStatus();
   const [editVehicle, setEditVehicle] = useState<VehicleSummary | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const vehicles = data?.data ?? [];
   const pagination = data?.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 0 };
@@ -76,6 +78,10 @@ export default function InventarioPage() {
             {pagination.total} vehículos • Página {pagination.page} de {pagination.totalPages}
           </p>
         </div>
+        <button onClick={() => setIsCreateOpen(true)} className="btn-primary flex items-center gap-2">
+          <Plus size={18} />
+          Crear vehículo
+        </button>
       </div>
 
       {(updateMutation.isError || statusMutation.isError) && (
@@ -122,6 +128,8 @@ export default function InventarioPage() {
           </table>
         </div>
       )}
+
+      <VehicleFormModal open={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
     </div>
   );
 }

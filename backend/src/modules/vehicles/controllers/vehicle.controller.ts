@@ -36,6 +36,15 @@ export class VehicleController {
     }
   }
 
+  async facets(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const facets = await vehicleService.getFacets();
+      res.json({ data: facets });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async detail(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const parse = vehicleIdParamSchema.safeParse({ id: req.params.id });

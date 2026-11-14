@@ -2,7 +2,9 @@
 
 import { apiFetch } from "@/lib/api";
 import type {
+  VehicleCreateData,
   VehicleDetail,
+  VehicleFacets,
   VehicleList,
   VehicleQueryParams,
   VehicleSummary,
@@ -32,8 +34,21 @@ export async function getVehiclesPage(
   return apiFetch<VehicleList>(`/api/vehicles${buildQueryString(params)}`);
 }
 
+export async function getVehicleFacets(): Promise<VehicleFacets> {
+  const response = await apiFetch<{ data: VehicleFacets }>("/api/vehicles/meta");
+  return response.data;
+}
+
 export async function getVehicle(id: string): Promise<VehicleDetail> {
   const response = await apiFetch<{ data: VehicleDetail }>(`/api/vehicles/${id}`);
+  return response.data;
+}
+
+export async function createVehicle(data: VehicleCreateData): Promise<VehicleDetail> {
+  const response = await apiFetch<{ data: VehicleDetail }>("/api/vehicles", {
+    method: "POST",
+    body: JSON.stringify({ ...data, status: "PUBLICADO" }),
+  });
   return response.data;
 }
 

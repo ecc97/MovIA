@@ -43,22 +43,41 @@ export interface VehicleDetail extends VehicleSummary {
   updatedAt: string;
 }
 
+// Contrato real de GET /api/vehicles (vehicleQuerySchema del backend)
 export interface VehicleQueryParams {
-  status?: VehicleStatus;
   bodyType?: string;
   condition?: string;
   make?: string;
+  minPrice?: string;
+  maxPrice?: string;
   yearMin?: string;
   yearMax?: string;
-  priceMin?: string;
-  priceMax?: string;
   mileageMin?: string;
   mileageMax?: string;
-  fuel?: string;
-  transmission?: string;
-  sortBy?: string;
+  sortBy?: "createdAt_desc" | "price_asc" | "price_desc" | "year_desc";
   page?: string;
   limit?: string;
+}
+
+// GET /api/vehicles/meta (años y marcas de vehículos PUBLICADO)
+export interface VehicleFacets {
+  years: number[];
+  makes: string[];
+}
+
+// Espejo de createVehicleSchema del backend (status default PUBLICADO)
+export interface VehicleCreateData {
+  make: string;
+  model: string;
+  year: number;
+  price: number;
+  mileage: number;
+  condition: "NUEVO" | "USADO";
+  bodyType: "AUTO" | "SUV" | "CAMIONETA";
+  fuel: string;
+  transmission: string;
+  color: string;
+  description?: string;
 }
 
 // PATCH /api/vehicles/:id acepta actualización parcial

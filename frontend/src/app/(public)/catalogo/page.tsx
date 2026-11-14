@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useVehicles } from "@/features/vehicles/hooks/useVehicles";
+import { useVehicles, useVehicleFacets } from "@/features/vehicles/hooks/useVehicles";
 import type { VehicleQueryParams } from "@/features/vehicles/types";
 import VehicleCard from "@/features/vehicles/components/VehicleCard";
 import { Search, X, ChevronDown } from "lucide-react";
@@ -49,15 +49,13 @@ function filtersToQueryParams(filters: FilterValues): VehicleQueryParams {
   }
   if (filters.condition) params.condition = filters.condition;
   if (filters.make) params.make = filters.make;
-  if (filters.priceMin) params.priceMin = filters.priceMin;
-  if (filters.priceMax) params.priceMax = filters.priceMax;
+  if (filters.priceMin) params.minPrice = filters.priceMin;
+  if (filters.priceMax) params.maxPrice = filters.priceMax;
   if (filters.yearMin) params.yearMin = filters.yearMin;
   if (filters.yearMax) params.yearMax = filters.yearMax;
   if (filters.mileageMin) params.mileageMin = filters.mileageMin;
   if (filters.mileageMax) params.mileageMax = filters.mileageMax;
-  if (filters.sortBy && filters.sortBy !== "createdAt_desc") {
-    params.sortBy = filters.sortBy;
-  }
+  if (filters.sortBy) params.sortBy = filters.sortBy as VehicleQueryParams["sortBy"];
   if (filters.page && filters.page !== "1") params.page = filters.page;
 
   return params;
@@ -69,6 +67,7 @@ export default function CatalogoPage() {
 
   const queryParams = filtersToQueryParams(filters);
   const { data: vehicles, isLoading, isError } = useVehicles(queryParams);
+  const { data: facets } = useVehicleFacets();
 
   const handleChange = (field: keyof FilterValues, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
@@ -82,7 +81,32 @@ export default function CatalogoPage() {
     (v) => v !== "" && v !== "createdAt_desc"
   );
 
-  const popularMakes = ["Toyota", "Chevrolet", "Kia", "Hyundai", "Nissan"];
+  // Facetas dinámicas del backend (años y marcas de vehículos PUBLICADO)
+  const years = facets?.years ?? [];
+  const makes = facets?.makes ?? [];
+
+  const handleChangeYearMin = (value: string) => {
+    setFilters((prev) => {
+      const next = { ...prev, yearMin: value };
+      // Si el nuevo "Desde" supera el "Hasta", se reinicia "Hasta"
+      if (value && prev.yearMax && Number(prev.yearMax) < Number(value)) {
+        next.yearMax = "";
+      }
+      return next;
+    });
+  };
+
+  const handleChangeYearMax = (value: string) => {
+    setFilters((prev) => {
+      const next = { ...prev, yearMax: value };
+      // Si el nuevo "Hasta" es menor al "Desde", se reinicia "Desde"
+      if (value && prev.yearMin && Number(prev.yearMin) > Number(value)) {
+        next.yearMin = "";
+      }
+      return next;
+    });
+  };
+
   const bodyTypes = ["Sedán", "SUV", "Camioneta"];
   const conditions = ["NUEVO", "USADO"];
 
@@ -148,7 +172,7 @@ export default function CatalogoPage() {
                   onChange={(e) => handleChange("make", e.target.value)}
                 >
                   <option value="">Todas</option>
-                  {popularMakes.map((m) => (
+                  {makes.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
@@ -177,24 +201,37 @@ export default function CatalogoPage() {
                 </div>
               </div>
 
-              {/* Year range */}
+              {/* Year range (selects con años reales de la API) */}
               <div>
                 <label className="label-field">Año</label>
                 <div className="flex gap-2">
-                  <input
-                    type="number"
-                    placeholder="Desde"
+                  <select
+                    aria-label="Año desde"
                     className="input-field !py-2 text-sm"
                     value={filters.yearMin}
-                    onChange={(e) => handleChange("yearMin", e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Hasta"
+                    onChange={(e) => handleChangeYearMin(e.target.value)}
+                  >
+                    <option value="">Desde</option>
+                    {years.map((y) => (
+                      <option key={y} value={y} disabled={filters.yearMax !== "" && y > Number(filters.yearMax)}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Año hasta"
                     className="input-field !py-2 text-sm"
                     value={filters.yearMax}
-                    onChange={(e) => handleChange("yearMax", e.target.value)}
-                  />
+                    onChange={(e) => handleChangeYearMax(e.target.value)}
+                    disabled={filters.yearMin === ""}
+                  >
+                    <option value="">Hasta</option>
+                    {years.map((y) => (
+                      <option key={y} value={y} disabled={filters.yearMin !== "" && y < Number(filters.yearMin)}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -288,7 +325,7 @@ export default function CatalogoPage() {
                   onChange={(e) => handleChange("make", e.target.value)}
                 >
                   <option value="">Todas</option>
-                  {popularMakes.map((m) => (
+                  {makes.map((m) => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>

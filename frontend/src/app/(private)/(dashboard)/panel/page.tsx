@@ -29,7 +29,7 @@ function StatsCard({ title, value, subtitle, icon }: {
 
 export default function PanelDashboard() {
   // GET /api/vehicles solo devuelve PUBLICADO (endpoint público)
-  const { data: vehicles } = useVehicles({ status: "PUBLICADO" });
+  const { data: vehicles } = useVehicles();
   const { data: inquiriesData, isLoading: loadingInquiries } = useInquiries();
 
   const stats = {

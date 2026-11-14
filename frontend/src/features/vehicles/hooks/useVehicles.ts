@@ -3,8 +3,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getVehicles, getVehiclesPage, updateVehicle, updateVehicleStatus } from "../services/vehicle.service";
+import { getVehicles, getVehiclesPage, getVehicleFacets, createVehicle, updateVehicle, updateVehicleStatus } from "../services/vehicle.service";
 import type {
+  VehicleCreateData,
   VehicleDetail,
   VehicleQueryParams,
   VehicleStatus,
@@ -12,6 +13,7 @@ import type {
   VehicleUpdateData,
 } from "../types";
 
+// GET /api/vehicles es público y solo devuelve PUBLICADO
 export function useVehicles(params?: VehicleQueryParams) {
   return useQuery<VehicleSummary[]>({
     queryKey: ["vehicles", params ?? {}],
@@ -19,10 +21,27 @@ export function useVehicles(params?: VehicleQueryParams) {
   });
 }
 
+export function useVehicleFacets() {
+  return useQuery({
+    queryKey: ["vehicles", "facets"],
+    queryFn: () => getVehicleFacets(),
+  });
+}
+
 export function useVehiclesPage() {
   return useQuery({
     queryKey: ["vehicles", "page", {}],
     queryFn: () => getVehiclesPage(),
+  });
+}
+
+export function useCreateVehicle() {
+  const queryClient = useQueryClient();
+  return useMutation<VehicleDetail, Error, VehicleCreateData>({
+    mutationFn: (data) => createVehicle(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    },
   });
 }
 
