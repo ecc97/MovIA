@@ -14,7 +14,7 @@ export interface VehicleSummary {
   condition: string;
   bodyType: string;
   status: VehicleStatus;
-  photoUrl?: string;
+  photos: VehiclePhoto[];
 }
 
 export interface VehicleList {
@@ -30,7 +30,7 @@ export interface VehicleList {
 export interface VehiclePhoto {
   id?: string;
   url: string;
-  order?: number;
+  order: number;
 }
 
 export interface VehicleDetail extends VehicleSummary {
@@ -38,7 +38,6 @@ export interface VehicleDetail extends VehicleSummary {
   fuel: string;
   transmission: string;
   color: string;
-  photos: VehiclePhoto[];
   createdAt: string;
   updatedAt: string;
 }
@@ -80,5 +79,5 @@ export interface VehicleCreateData {
   description?: string;
 }
 
-// PATCH /api/vehicles/:id acepta actualización parcial
-export type VehicleUpdateData = Partial<Omit<VehicleSummary, "id">>;
+// PATCH /api/vehicles/:id acepta actualización parcial (sin fotos: endpoints aparte)
+export type VehicleUpdateData = Partial<Omit<VehicleSummary, "id" | "photos">>;

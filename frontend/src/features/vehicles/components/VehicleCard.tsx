@@ -1,5 +1,8 @@
-import Image from "next/image";
+"use client";
+
 import Link from "next/link";
+import VehicleImage from "./VehicleImage";
+import { getPrimaryPhotoUrl } from "../utils/vehicle-image";
 import { VehicleSummary } from "@/features/vehicles/types";
 import { formatPriceCOP } from "@/lib/utils";
 
@@ -12,12 +15,11 @@ export default function VehicleCard({ vehicle }: VehicleCardProps) {
     <Link href={`/vehiculos/${vehicle.id}`} className="block group">
       <div className="card-vehicle">
         <div className="relative h-52 w-full overflow-hidden bg-gray-200">
-          <Image
-            src={vehicle.photoUrl ?? `https://picsum.photos/seed/${vehicle.id.slice(0, 8)}/800/500`}
+          <VehicleImage
+            src={getPrimaryPhotoUrl(vehicle.photos)}
             alt={`${vehicle.make} ${vehicle.model}`}
-            fill
             sizes="(min-width: 1024px) 33vw, 100vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="transition-transform duration-300 group-hover:scale-105"
           />
           <span
             className={`absolute top-3 right-3 ${

@@ -13,6 +13,12 @@ const nextConfig = {
         port: '',
         pathname: '/seed/**',
       },
+      {
+        protocol: 'https',
+        hostname: '**',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
 };

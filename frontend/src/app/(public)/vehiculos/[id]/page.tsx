@@ -1,7 +1,8 @@
 import { getVehicle } from "@/features/vehicles/services/vehicle.service";
 import type { VehicleDetail } from "@/features/vehicles/types";
+import VehicleImage from "@/features/vehicles/components/VehicleImage";
+import { getPrimaryPhotoUrl } from "@/features/vehicles/utils/vehicle-image";
 import Link from "next/link";
-import Image from "next/image";
 import { formatPriceCOP, getWhatsAppLink, formatDate } from "@/lib/utils";
 import {
   Gauge,
@@ -83,49 +84,30 @@ export default async function VehiculoDetallePage({ params }: { params: Promise<
         <div className="lg:col-span-2 space-y-6">
           {/* Photo gallery */}
           <div className="space-y-4">
-            {vehicle.photos.length > 0 ? (
-              <>
-                <div className="relative h-72 md:h-96 rounded-card overflow-hidden bg-gray-200">
-                  <Image
-                    src={
-                      vehicle.photos[0]?.url ??
-                      `https://picsum.photos/seed/${vehicle.id.slice(0, 8)}/1200/800`
-                    }
-                    alt={`${vehicle.make} ${vehicle.model}`}
-                    fill
-                    sizes="(min-width: 1024px) 67vw, 100vw"
-                    className="object-cover"
-                    priority
-                  />
-                </div>
-                {vehicle.photos.length > 1 && (
-                  <div className="grid grid-cols-4 gap-2">
-                    {vehicle.photos.slice(1, 5).map((photo, idx) => (
-                      <div
-                        key={`${photo.id ?? idx}-${idx}`}
-                        className="relative h-24 rounded-btn overflow-hidden bg-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                      >
-                        <Image
-                          src={photo.url}
-                          alt={`${vehicle.make} ${vehicle.model} foto ${idx + 2}`}
-                          fill
-                          sizes="(min-width: 1024px) calc((100vw - 32px) / 4), 25%"
-                          className="object-cover"
-                        />
-                      </div>
-                    ))}
+            <div className="relative h-72 md:h-96 rounded-card overflow-hidden bg-gray-200">
+              <VehicleImage
+                src={getPrimaryPhotoUrl(vehicle.photos)}
+                alt={`${vehicle.make} ${vehicle.model}`}
+                sizes="(min-width: 1024px) 67vw, 100vw"
+                priority
+                skeleton={false}
+              />
+            </div>
+            {vehicle.photos.length > 1 && (
+              <div className="grid grid-cols-4 gap-2">
+                {vehicle.photos.slice(1, 5).map((photo, idx) => (
+                  <div
+                    key={`${photo.id ?? idx}-${idx}`}
+                    className="relative h-24 rounded-btn overflow-hidden bg-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                  >
+                    <VehicleImage
+                      src={photo.url}
+                      alt={`${vehicle.make} ${vehicle.model} foto ${idx + 2}`}
+                      sizes="(min-width: 1024px) calc((100vw - 32px) / 4), 25%"
+                      skeleton={false}
+                    />
                   </div>
-                )}
-              </>
-            ) : (
-              <div className="relative h-72 md:h-96 rounded-card overflow-hidden bg-gray-200">
-                <Image
-                  src={`https://picsum.photos/seed/${vehicle.id.slice(0, 8)}/1200/800`}
-                  alt={`${vehicle.make} ${vehicle.model}`}
-                  fill
-                  sizes="100vw"
-                  className="object-cover"
-                />
+                ))}
               </div>
             )}
           </div>
