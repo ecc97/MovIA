@@ -10,9 +10,14 @@ import rateLimit from "express-rate-limit";
 import { routerVehicles } from "./modules/vehicles/routes/vehicles.routes.js";
 import routerInquiries from "./modules/inquiries/routes/inquiry.routes.js";
 import routerAuth from "./modules/auth/auth.routes.js";
+import docsRouter from "./docs/swagger.js";
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 4000);
+
+// Documentación (antes de helmet y del limiter: su CSP por defecto rompe Swagger UI
+// y los assets de la UI no deben contar contra el rate limit)
+app.use("/api/docs", docsRouter);
 
 // Rate limiting global
 const limiter = rateLimit({

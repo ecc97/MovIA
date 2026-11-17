@@ -1,0 +1,750 @@
+# MOVIA — Concesionario Web MVP (API REST)
+# OpenAPI 3.0.3 — documentación de los 15 endpoints actuales.
+# Regla del proyecto: todo endpoint nuevo o actualizado se refleja aquí.
+# Errores documentados tal cual se comportan hoy (ver bitácora api-openapi-swagger.md).
+
+openapi: 3.0.3
+info:
+  title: MOVIA API
+  version: 0.1.0
+  description: |
+    API REST del concesionario ficticio **MOVIA** (MVP: Express + Prisma + PostgreSQL).
+
+    - **Auth**: JWT en cookie `httpOnly` (`movia_session`). Nunca tokens en `localStorage`.
+    - **Roles**: `ADMIN` (inventario) y `ASESOR` (consultas). Los guards del frontend son solo UX; la autoridad es esta API.
+    - **Vehículos**: no se borran físicamente; cambia su `status` (`BORRADOR | PUBLICADO | ARCHIVADO`).
+    - **Precios**: enteros en COP sin decimales.
+    - **Rate limit**: 100 requests / 15 min por IP (respuesta 429).
+    - **Errores sin handler global**: los `next(err)` no controlados devuelven el HTML 500 por defecto de Express (brecha conocida).
+    - Datos y credenciales de prueba: ver `AGENTS.md` del repositorio (dataset simulado).
+servers:
+  - url: http://localhost:4000
+tags:
+  - name: Salud
+  - name: Vehículos
+  - name: Consultas
+  - name: Auth
+
+paths:
+  /api/health:
+    get:
+      tags: [Salud]
+      summary: Healthcheck
+      operationId: getHealth
+      responses:
+        "200":
+          description: API operativa
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "ok" }
+                  timestamp: { type: string, format: date-time }
+              example:
+                status: ok
+                timestamp: 2026-11-15T12:00:00.000Z
+
+  /api/vehicles:
+    get:
+      tags: [Vehículos]
+      summary: Listar vehículos publicados (público)
+      description: |
+        Solo devuelve `PUBLICADO`. Filtros en query params; los params desconocidos son
+        descartados por Zod. `make` filtra con `contains` insensible a mayúsculas.
+      operationId: listVehicles
+      parameters:
+        - $ref: "#/components/parameters/BodyType"
+        - $ref: "#/components/parameters/Condition"
+        - name: make
+          in: query
+          schema: { type: string }
+          description: Coincidencia parcial (insensible a mayúsculas).
+        - name: minPrice
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: maxPrice
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: yearMin
+          in: query
+          schema: { type: integer, minimum: 1900 }
+        - name: yearMax
+          in: query
+          schema: { type: integer, minimum: 1900 }
+        - name: mileageMin
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: mileageMax
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [createdAt_desc, price_asc, price_desc, year_desc]
+            default: createdAt_desc
+          description: Whitelist de ordenamiento (sin orden libre).
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Vehículos publicados + paginación
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VehicleListResponse" }
+        "400":
+          description: Query inválida (Zod)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: validacion_error
+                details:
+                  - code: invalid_type
+                    path: [page]
+                    message: Expected number, received nan
+    post:
+      tags: [Vehículos]
+      summary: Crear vehículo (solo ADMIN)
+      description: Crea un vehículo de inventario. `status` por defecto `PUBLICADO`. No maneja fotos (pendiente).
+      operationId: createVehicle
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateVehicle" }
+            example:
+              make: Toyota
+              model: Corolla
+              year: 2024
+              price: 89000000
+              mileage: 0
+              condition: NUEVO
+              bodyType: AUTO
+              fuel: Gasolina
+              transmission: Automática
+              color: Blanco
+              description: Sedán 0 km, garantía de fábrica.
+              status: PUBLICADO
+      responses:
+        "201":
+          description: Vehículo creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/VehicleDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/vehicles/meta:
+    get:
+      tags: [Vehículos]
+      summary: Facetas del catálogo (público)
+      description: Años y marcas distintas de vehículos `PUBLICADO` (años desc, marcas asc). Alimenta los selects del catálogo.
+      operationId: getVehicleFacets
+      responses:
+        "200":
+          description: Facetas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VehicleFacetsResponse" }
+
+  /api/vehicles/{id}:
+    get:
+      tags: [Vehículos]
+      summary: Detalle de vehículo (público)
+      description: Disponible para cualquier vehículo existente (incluye `BORRADOR`/`ARCHIVADO` si se conoce el ID).
+      operationId: getVehicleById
+      parameters:
+        - $ref: "#/components/parameters/VehicleId"
+      responses:
+        "200":
+          description: Detalle del vehículo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/VehicleDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Vehículo no encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: vehiculo_no_encontrado }
+    patch:
+      tags: [Vehículos]
+      summary: Editar vehículo (solo ADMIN)
+      description: Edición parcial. **No permite cambiar `status`** (usar `PATCH /api/vehicles/{id}/status`).
+      operationId: updateVehicle
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/VehicleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateVehicle" }
+            example:
+              price: 85000000
+              color: Gris
+      responses:
+        "200":
+          description: Vehículo actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/VehicleDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Vehículo no encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: vehiculo_no_encontrado }
+
+  /api/vehicles/{id}/status:
+    patch:
+      tags: [Vehículos]
+      summary: Cambiar estado de publicación (solo ADMIN)
+      description: |
+        Cambia `status`. No existe `DELETE` (regla de negocio: conservar historial).
+        Ojo: el campo `reason` se acepta pero **se ignora** en la versión actual (brecha conocida).
+      operationId: updateVehicleStatus
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/VehicleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateVehicleStatus" }
+            example:
+              status: ARCHIVADO
+              reason: Vendido fuera de plataforma
+      responses:
+        "200":
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/VehicleDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Vehículo no encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: vehiculo_no_encontrado }
+
+  /api/inquiries:
+    post:
+      tags: [Consultas]
+      summary: Crear consulta (público)
+      description: |
+        Consulta general o asociada a un vehículo (`vehicleId` opcional; no se valida que exista).
+        Estado inicial `NUEVA`. El clic en WhatsApp **no** crea consulta (limitación del MVP).
+      operationId: createInquiry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInquiry" }
+            example:
+              name: Laura Gómez
+              email: laura@example.com
+              phone: "3001234567"
+              message: Me interesa, ¿aceptan financión?
+              vehicleId: cku9x2m3v0a1b2c3d4e5f6g7h
+      responses:
+        "201":
+          description: Consulta creada (sin envelope `{ data }`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Inquiry" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    get:
+      tags: [Consultas]
+      summary: Listar consultas (ASESOR/ADMIN)
+      description: Los asesores ven todas las consultas (la asignación por asesor queda fuera del MVP).
+      operationId: listInquiries
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/InquiryStatus" }
+        - name: assignedToId
+          in: query
+          schema: { type: string }
+          description: Filtra por usuario asignado (asignación fuera del MVP).
+        - $ref: "#/components/parameters/Page"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Consultas (formato propio, distinto al de vehículos)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InquiryListResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/inquiries/{id}:
+    get:
+      tags: [Consultas]
+      summary: Detalle de consulta (ASESOR/ADMIN)
+      operationId: getInquiryById
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/InquiryId"
+      responses:
+        "200":
+          description: Consulta (sin envelope)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Inquiry" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Consulta no encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: consulta_no_encontrada }
+
+  /api/inquiries/{id}/status:
+    patch:
+      tags: [Consultas]
+      summary: Cambiar estado de consulta (ASESOR/ADMIN)
+      description: |
+        Se permite saltar estados. **Reabrir** una consulta cerrada
+        (`VENDIDA`/`DESCARTADA` → estado activo) es exclusivo de ADMIN:
+        un ASESOR recibe 403 `{ error: no_autorizado, message }`.
+      operationId: updateInquiryStatus
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/InquiryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateInquiryStatus" }
+            example:
+              status: EN_CONTACTO
+      responses:
+        "200":
+          description: Estado actualizado (sin envelope)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Inquiry" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: ASESOR intentando reabrir una consulta cerrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: no_autorizado
+                message: Solo un ADMIN puede reabrir una consulta cerrada
+        "404":
+          description: Consulta no encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: consulta_no_encontrada }
+
+  /api/inquiries/{id}/notes:
+    patch:
+      tags: [Consultas]
+      summary: Añadir nota interna (ASESOR/ADMIN)
+      description: |
+        **No reemplaza** `notes`: agrega al final `[timestamp ISO] Nombre del actor: texto`
+        y conserva `updatedAt`.
+      operationId: updateInquiryNotes
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/InquiryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateInquiryNotes" }
+            example:
+              notes: Llamo el viernes para test drive.
+      responses:
+        "200":
+          description: Nota agregada (sin envelope)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Inquiry" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Consulta no encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: consulta_no_encontrada }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión (público)
+      description: |
+        Valida credenciales (chequeo manual, sin Zod — brecha conocida) y setea la cookie
+        `movia_session` (httpOnly, sameSite=lax, secure en producción). Para "Try it out",
+        loguearse primero y las llamadas siguientes reutilizan la cookie (Swagger UI corre
+        en el mismo origen que la API).
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+            example:
+              email: maria@movia.demo
+              password: demo123
+      responses:
+        "200":
+          description: Sesión iniciada (Set-Cookie `movia_session`)
+          headers:
+            Set-Cookie:
+              description: Cookie httpOnly con el JWT
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+        "400":
+          description: Faltan email o password
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: email_y_password_obligatorios }
+        "401":
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: credenciales_invalidas }
+        "403":
+          description: Usuario desactivado (soft-disable)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: usuario_inactivo }
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Cerrar sesión (requiere sesión)
+      description: Elimina la cookie `movia_session`.
+      operationId: logout
+      security: [{ cookieAuth: [] }]
+      responses:
+        "200":
+          description: Sesión cerrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessageResponse" }
+              example: { message: "Sesión cerrada correctamente" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Usuario actual (requiere sesión)
+      description: Lee el JWT de la cookie y devuelve el usuario (usado por el frontend para bootstrap).
+      operationId: me
+      security: [{ cookieAuth: [] }]
+      responses:
+        "200":
+          description: Usuario actual
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+        "401":
+          description: Sin sesión o sesión inválida/expirada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: no_autenticado
+                message: "Sesión inválida o expirada"
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: movia_session
+
+  parameters:
+    VehicleId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+      example: cku9x2m3v0a1b2c3d4e5f6g7h
+    InquiryId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+      example: cku9x2m3v0a1b2c3d4e5f6g7i
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 12 }
+    BodyType:
+      name: bodyType
+      in: query
+      schema: { type: string, enum: [AUTO, SUV, CAMIONETA] }
+    Condition:
+      name: condition
+      in: query
+      schema: { type: string, enum: [NUEVO, USADO] }
+
+  responses:
+    BadRequest:
+      description: Validación fallida (Zod)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: validacion_error
+            details:
+              - code: too_small
+                path: [name]
+                message: El nombre es obligatorio
+    Unauthorized:
+      description: Sin sesión o sesión inválida/expirada
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: no_autenticado
+            message: "No hay sesión activa"
+    Forbidden:
+      description: Rol insuficiente
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: no_autorizado
+            message: "Solo ADMIN puede realizar esta operación"
+
+  schemas:
+    Role: { type: string, enum: [ADMIN, ASESOR] }
+    VehicleStatus: { type: string, enum: [BORRADOR, PUBLICADO, ARCHIVADO] }
+    InquiryStatus:
+      type: string
+      enum: [NUEVA, EN_CONTACTO, EN_SEGUIMIENTO, VENDIDA, DESCARTADA]
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/Role" }
+    UserResponse:
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/User" }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 150 }
+        password: { type: string }
+    VehiclePhoto:
+      type: object
+      properties:
+        url: { type: string, format: uri }
+        order: { type: integer, description: Menor order = foto principal }
+    VehicleBase:
+      type: object
+      properties:
+        id: { type: string }
+        make: { type: string }
+        model: { type: string }
+        year: { type: integer, minimum: 1900 }
+        price: { type: integer, minimum: 0, description: Entero en COP }
+        mileage: { type: integer, minimum: 0 }
+        condition: { type: string, enum: [NUEVO, USADO] }
+        bodyType: { type: string, enum: [AUTO, SUV, CAMIONETA] }
+        fuel: { type: string }
+        transmission: { type: string }
+        color: { type: string }
+        status: { $ref: "#/components/schemas/VehicleStatus" }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/VehiclePhoto" }
+    VehicleListItem:
+      allOf:
+        - $ref: "#/components/schemas/VehicleBase"
+        - type: object
+          properties:
+            priceFormatted:
+              type: string
+              description: Precio formateado con Intl es-CO (solo en el listado)
+              example: $ 89.000.000
+    VehicleDetail:
+      allOf:
+        - $ref: "#/components/schemas/VehicleBase"
+        - type: object
+          properties:
+            description: { type: string, nullable: true }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    Pagination:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+    VehicleListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/VehicleListItem" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+    VehicleFacetsResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            years:
+              type: array
+              items: { type: integer }
+              description: Distintos de PUBLICADO, años desc
+            makes:
+              type: array
+              items: { type: string }
+              description: Distintos de PUBLICADO, marcas asc
+    CreateVehicle:
+      type: object
+      required: [make, model, year, price, condition, bodyType, fuel, transmission, color]
+      properties:
+        make: { type: string, minLength: 1, maxLength: 60 }
+        model: { type: string, minLength: 1, maxLength: 60 }
+        year: { type: integer, minimum: 1900, description: Máximo año actual + 1 }
+        price: { type: integer, minimum: 0 }
+        mileage: { type: integer, minimum: 0, default: 0 }
+        condition: { type: string, enum: [NUEVO, USADO] }
+        bodyType: { type: string, enum: [AUTO, SUV, CAMIONETA] }
+        fuel: { type: string, minLength: 1, maxLength: 40 }
+        transmission: { type: string, minLength: 1, maxLength: 40 }
+        color: { type: string, minLength: 1, maxLength: 40 }
+        description: { type: string, maxLength: 2000 }
+        status: { $ref: "#/components/schemas/VehicleStatus", default: PUBLICADO }
+    UpdateVehicle:
+      type: object
+      description: Edición parcial; sin status
+      properties:
+        make: { type: string, minLength: 1, maxLength: 60 }
+        model: { type: string, minLength: 1, maxLength: 60 }
+        year: { type: integer, minimum: 1900 }
+        price: { type: integer, minimum: 0 }
+        mileage: { type: integer, minimum: 0 }
+        condition: { type: string, enum: [NUEVO, USADO] }
+        bodyType: { type: string, enum: [AUTO, SUV, CAMIONETA] }
+        fuel: { type: string, minLength: 1, maxLength: 40 }
+        transmission: { type: string, minLength: 1, maxLength: 40 }
+        color: { type: string, minLength: 1, maxLength: 40 }
+        description: { type: string, maxLength: 2000 }
+    UpdateVehicleStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/VehicleStatus" }
+        reason:
+          type: string
+          maxLength: 500
+          description: Aceptado pero ignorado en la versión actual (brecha conocida)
+    Inquiry:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        message: { type: string }
+        vehicleId: { type: string, nullable: true }
+        vehicleMake: { type: string }
+        vehicleModel: { type: string }
+        status: { $ref: "#/components/schemas/InquiryStatus" }
+        notes:
+          type: string
+          nullable: true
+          description: 'Notas internas con apéndice "[timestamp] Nombre: texto"'
+        assignedToName: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateInquiry:
+      type: object
+      required: [name, email, phone, message]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        email: { type: string, format: email, maxLength: 150 }
+        phone: { type: string, minLength: 7, maxLength: 20 }
+        message: { type: string, minLength: 1, maxLength: 1000 }
+        vehicleId: { type: string }
+    UpdateInquiryStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/InquiryStatus" }
+    UpdateInquiryNotes:
+      type: object
+      required: [notes]
+      properties:
+        notes: { type: string, maxLength: 1000 }
+    InquiryListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Inquiry" }
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+    ErrorResponse:
+      type: object
+      description: |
+        Formato real de errores. Nota: vehicles usa `validacion_error` (español) e
+        inquiries usa `validation_error` (inglés) — inconsistencia documentada.
+      properties:
+        error: { type: string, description: Código del error }
+        message: { type: string }
+        details:
+          type: array
+          description: Issues de Zod cuando el código es de validación
+          items: { type: object }
+    MessageResponse:
+      type: object
+      properties:
+        message: { type: string }
