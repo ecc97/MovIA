@@ -101,21 +101,29 @@ export class VehicleRepository {
   }
 
   async create(data: CreateVehicle, createdBy: string): Promise<VehicleDetail> {
+    // Las fotos (opcionales) se crean anidadas en la misma operación (atómico).
+    // El orden del array define el orden; la primera es la foto principal.
+    const { photos, ...vehicleFields } = data;
+
     const v = await prisma.vehicle.create({
       data: {
-        make: data.make,
-        model: data.model,
-        year: data.year,
-        price: data.price,
-        mileage: data.mileage,
-        condition: data.condition,
-        bodyType: data.bodyType,
-        fuel: data.fuel,
-        transmission: data.transmission,
-        color: data.color,
-        description: data.description,
-        status: data.status,
+        make: vehicleFields.make,
+        model: vehicleFields.model,
+        year: vehicleFields.year,
+        price: vehicleFields.price,
+        mileage: vehicleFields.mileage,
+        condition: vehicleFields.condition,
+        bodyType: vehicleFields.bodyType,
+        fuel: vehicleFields.fuel,
+        transmission: vehicleFields.transmission,
+        color: vehicleFields.color,
+        description: vehicleFields.description,
+        status: vehicleFields.status,
         createdBy,
+        photos:
+          photos && photos.length > 0
+            ? { create: photos.map((url, index) => ({ url, order: index + 1 })) }
+            : undefined,
       },
       include: { photos: { select: { url: true, order: true }, orderBy: { order: "asc" } } },
     });
@@ -153,6 +161,17 @@ export class VehicleRepository {
     });
 
     return this.toDetail(v);
+  }
+
+  async replacePhotos(id: string, photos: string[]): Promise<VehicleDetail | null> {
+    // Reemplazo atómico: el array define el orden (1 = principal).
+    await prisma.$transaction([
+      prisma.photo.deleteMany({ where: { vehicleId: id } }),
+      prisma.photo.createMany({
+        data: photos.map((url, index) => ({ url, order: index + 1, vehicleId: id })),
+      }),
+    ]);
+    return this.findById(id);
   }
 
   private buildWhere(q: VehicleQuery) {

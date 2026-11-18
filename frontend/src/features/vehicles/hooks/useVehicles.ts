@@ -3,7 +3,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getVehicles, getVehiclesPage, getVehicleFacets, createVehicle, updateVehicle, updateVehicleStatus } from "../services/vehicle.service";
+import { getVehicles, getVehiclesPage, getVehicleFacets, createVehicle, updateVehicle, updateVehicleStatus, updateVehiclePhotos } from "../services/vehicle.service";
 import type {
   VehicleCreateData,
   VehicleDetail,
@@ -59,6 +59,16 @@ export function useUpdateVehicleStatus() {
   const queryClient = useQueryClient();
   return useMutation<VehicleDetail, Error, { id: string; status: VehicleStatus }>({
     mutationFn: ({ id, status }) => updateVehicleStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    },
+  });
+}
+
+export function useUpdateVehiclePhotos() {
+  const queryClient = useQueryClient();
+  return useMutation<VehicleDetail, Error, { id: string; photos: string[] }>({
+    mutationFn: ({ id, photos }) => updateVehiclePhotos(id, photos),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
     },

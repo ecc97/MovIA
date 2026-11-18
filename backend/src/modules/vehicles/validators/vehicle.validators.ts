@@ -25,6 +25,13 @@ export type VehicleQuery = z.infer<typeof vehicleQuerySchema>;
 
 // --- CRUD inventario (solo ADMIN) ---
 
+// URL de foto compartida entre crear y editar fotos
+export const photoUrlSchema = z
+  .string()
+  .url("URL inválida")
+  .max(500)
+  .refine((v) => /^https?:\/\//i.test(v), "Solo se admiten URLs http o https");
+
 export const createVehicleSchema = z.object({
   make: z.string().min(1, "La marca es obligatoria").max(60),
   model: z.string().min(1, "El modelo es obligatorio").max(60),
@@ -38,6 +45,8 @@ export const createVehicleSchema = z.object({
   color: z.string().min(1).max(40),
   description: z.string().max(2000).optional(),
   status: z.enum(["BORRADOR", "PUBLICADO", "ARCHIVADO"]).default("PUBLICADO"),
+  // Fotos opcionales por URL; el orden del array define el orden (1 = principal)
+  photos: z.array(photoUrlSchema).max(6, "Máximo 6 fotos").optional(),
 });
 
 export type CreateVehicle = z.infer<typeof createVehicleSchema>;
@@ -70,3 +79,10 @@ export const updateVehicleStatusSchema = z.object({
 });
 
 export type UpdateVehicleStatus = z.infer<typeof updateVehicleStatusSchema>;
+
+// PUT /api/vehicles/:id/photos — reemplazo total de la colección de fotos
+export const updateVehiclePhotosSchema = z.object({
+  photos: z.array(photoUrlSchema).max(6, "Máximo 6 fotos"),
+});
+
+export type UpdateVehiclePhotos = z.infer<typeof updateVehiclePhotosSchema>;

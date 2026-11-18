@@ -8,8 +8,9 @@ import {
   useVehiclesPage,
 } from "@/features/vehicles/hooks/useVehicles";
 import VehicleFormModal from "@/features/vehicles/components/VehicleFormModal";
+import VehiclePhotosModal from "@/features/vehicles/components/VehiclePhotosModal";
 import type { VehicleStatus, VehicleSummary } from "@/features/vehicles/types";
-import { Edit, Save, X, Archive, Plus } from "lucide-react";
+import { Edit, Save, X, Archive, Plus, Images } from "lucide-react";
 
 export default function InventarioPage() {
   const { data, isLoading, isError } = useVehiclesPage();
@@ -17,6 +18,7 @@ export default function InventarioPage() {
   const statusMutation = useUpdateVehicleStatus();
   const [editVehicle, setEditVehicle] = useState<VehicleSummary | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [photosVehicle, setPhotosVehicle] = useState<VehicleSummary | null>(null);
 
   const vehicles = data?.data ?? [];
   const pagination = data?.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 0 };
@@ -117,6 +119,7 @@ export default function InventarioPage() {
                   setEditVehicle={setEditVehicle}
                   isEditing={editVehicle?.id === vehicle.id}
                   handleEdit={handleEdit}
+                  handlePhotos={(v) => setPhotosVehicle(v)}
                   handleSave={handleSave}
                   handleCancel={handleCancel}
                   handleStatusChange={handleStatusChange}
@@ -130,6 +133,12 @@ export default function InventarioPage() {
       )}
 
       <VehicleFormModal open={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+      {photosVehicle && (
+        <VehiclePhotosModal
+          vehicle={photosVehicle}
+          onClose={() => setPhotosVehicle(null)}
+        />
+      )}
     </div>
   );
 }
@@ -140,6 +149,7 @@ interface VehicleRowProps {
   setEditVehicle: (v: VehicleSummary | null) => void;
   isEditing: boolean;
   handleEdit: (v: VehicleSummary) => void;
+  handlePhotos: (v: VehicleSummary) => void;
   handleSave: () => void;
   handleCancel: () => void;
   handleStatusChange: (v: VehicleSummary, s: VehicleStatus) => void;
@@ -153,6 +163,7 @@ function VehicleRow({
   setEditVehicle,
   isEditing,
   handleEdit,
+  handlePhotos,
   handleSave,
   handleCancel,
   handleStatusChange,
@@ -271,6 +282,13 @@ function VehicleRow({
               className="p-1 text-dorado hover:bg-dorado/10 rounded full"
             >
               <Edit size={16} />
+            </button>
+            <button
+              onClick={() => handlePhotos(vehicle)}
+              aria-label="Administrar fotos"
+              className="p-1 text-gris-500 hover:bg-gris-200 rounded full"
+            >
+              <Images size={16} />
             </button>
             <button
               onClick={() => handleArchive(vehicle)}

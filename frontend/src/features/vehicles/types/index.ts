@@ -77,6 +77,8 @@ export interface VehicleCreateData {
   transmission: string;
   color: string;
   description?: string;
+  // Fotos por URL (opcional); el orden del array define el orden (1 = principal)
+  photos?: string[];
 }
 
 // PATCH /api/vehicles/:id acepta actualización parcial (sin fotos: endpoints aparte)

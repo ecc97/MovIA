@@ -67,3 +67,11 @@ export async function updateVehicleStatus(id: string, status: VehicleSummary["st
   });
   return response.data;
 }
+
+export async function updateVehiclePhotos(id: string, photos: string[]): Promise<VehicleDetail> {
+  const response = await apiFetch<{ data: VehicleDetail }>(`/api/vehicles/${id}/photos`, {
+    method: "PUT",
+    body: JSON.stringify({ photos }),
+  });
+  return response.data;
+}

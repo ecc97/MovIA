@@ -1,13 +1,29 @@
 // MOVIA — Seed de datos simulados
 // - 3 usuarios: 1 ADMIN + 2 ASESOR (contraseña: demo123)
-// - 45 vehículos (AUTO / SUV / CAMIONETA, NUEVO / USADO)
-// - 3 fotos por vehículo (picsum.photos placeholder)
+// - 44 vehículos (16 AUTO / 22 SUV / 6 CAMIONETA, NUEVO / USADO)
+// - 3 fotos por vehículo (catálogo de URLs de Pexels por bodyType, con rotación)
 // - 15 consultas (mix de generales y sobre vehículos, varios estados)
+//
+// Re-ejecutable: al iniciar borra fotos, consultas y vehículos (los usuarios
+// usan upsert). Ojo: también elimina vehículos creados a mano desde el panel.
+// Fuente y verificación de URLs: docs/bitacora/seed-fotos-por-categoria.md
 
 import { PrismaClient, VehicleStatus, InquiryStatus } from "@prisma/client";
 import { hash } from "argon2";
 
 const prisma = new PrismaClient();
+
+// URLs verificadas (HTTP 200, image/jpeg) — licencia Pexels, uso libre.
+const PEXELS_CDN = "https://images.pexels.com/photos/{id}/pexels-photo-{id}.jpeg?auto=compress&cs=tinysrgb&w=1200&h=675&fit=crop";
+const pexels = (id: number) => PEXELS_CDN.replaceAll("{id}", String(id));
+
+// Pool de 6 por categoría; cada vehículo recibe 3 fotos consecutivas rotando
+// por su índice (6 sets distintos en el catálogo, sin sets idénticos seguidos).
+const vehicleImages: Record<"AUTO" | "SUV" | "CAMIONETA", string[]> = {
+  AUTO: [34445488, 11305497, 9827716, 12170284, 12170317, 29593175].map(pexels),
+  SUV: [14776590, 17264100, 30479247, 14038635, 5608576, 4120664].map(pexels),
+  CAMIONETA: [25851807, 9331954, 32513625, 5661743, 21858643, 13804269].map(pexels),
+};
 
 async function main() {
   const passwordHash = await hash("demo123");
@@ -30,6 +46,11 @@ async function main() {
       create: { name: "Ana Torres", email: "ana@movia.demo", role: "ASESOR", isActive: true, passwordHash },
     }),
   ]);
+
+  // --- Limpieza previa (seed re-ejecutable, respetando FKs) ---
+  await prisma.photo.deleteMany();
+  await prisma.inquiry.deleteMany();
+  await prisma.vehicle.deleteMany();
 
   // --- Vehículos ---
   const vehicleData = [
@@ -86,21 +107,18 @@ async function main() {
   );
   console.log(`Vehículos creados: ${vehicles.length}`);
 
-  // --- Fotos (3 por vehículo, URLs de picsum con seed determinista) ---
-  await Promise.all(
-    vehicles.flatMap((vehicle) =>
-      [1, 2, 3].map((order) =>
-        prisma.photo.create({
-          data: {
-            url: `https://picsum.photos/seed/${vehicle.id.slice(0, 8)}${order}/800/500`,
-            order,
-            vehicleId: vehicle.id,
-          },
-        })
-      )
-    )
-  );
-  console.log(`Fotos creadas: ${vehicles.length * 3}`);
+  // --- Fotos (3 por vehículo, del pool de su bodyType, rotando por índice) ---
+  const photos = vehicles.flatMap((vehicle, index) => {
+    const images = vehicleImages[vehicle.bodyType as "AUTO" | "SUV" | "CAMIONETA"];
+    return [1, 2, 3].map((order, k) => ({
+      url: images[(index + k) % images.length]!,
+      order,
+      vehicleId: vehicle.id,
+    }));
+  });
+
+  const { count: photosCreated } = await prisma.photo.createMany({ data: photos });
+  console.log(`Fotos creadas: ${photosCreated}`);
 
   // --- Consultas (15, mix de generales y sobre vehículos) ---
   const inquiryData = [
@@ -130,7 +148,7 @@ async function main() {
 
   console.log("\n✅ Seed completado:");
   console.log(`   ${vehicles.length} vehículos`);
-  console.log(`   ${vehicles.length * 3} fotos`);
+  console.log(`   ${photosCreated} fotos`);
   console.log(`   ${inquiryData.length} consultas`);
   console.log("   Credenciales demo: usuario: maria|carlos|ana@movia.demo | contraseña: demo123");
 }

@@ -3,7 +3,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { AuthenticatedRequest } from "../../../middlewares/authenticate.js";
 import { vehicleService } from "../services/vehicle.service.js";
-import { vehicleQuerySchema, createVehicleSchema, updateVehicleSchema, vehicleIdParamSchema, updateVehicleStatusSchema } from "../validators/vehicle.validators.js";
+import { vehicleQuerySchema, createVehicleSchema, updateVehicleSchema, vehicleIdParamSchema, updateVehicleStatusSchema, updateVehiclePhotosSchema } from "../validators/vehicle.validators.js";
 
 export class VehicleController {
   async list(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -120,6 +120,28 @@ export class VehicleController {
       }
 
       const vehicle = await vehicleService.updateStatus(idParse.data.id, statusParse.data);
+      res.json({ data: vehicle });
+    } catch (err) {
+      if (err instanceof Error && err.message === "VEHICLE_NOT_FOUND") {
+        res.status(404).json({ error: "vehiculo_no_encontrado" });
+        return;
+      }
+      next(err);
+    }
+  }
+  async updatePhotos(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const idParse = vehicleIdParamSchema.safeParse({ id: req.params.id });
+      if (!idParse.success) {
+        res.status(400).json({ error: "validacion_error", details: idParse.error.errors });
+        return;
+      }
+      const bodyParse = updateVehiclePhotosSchema.safeParse(req.body);
+      if (!bodyParse.success) {
+        res.status(400).json({ error: "validacion_error", details: bodyParse.error.errors });
+        return;
+      }
+      const vehicle = await vehicleService.replacePhotos(idParse.data.id, bodyParse.data);
       res.json({ data: vehicle });
     } catch (err) {
       if (err instanceof Error && err.message === "VEHICLE_NOT_FOUND") {

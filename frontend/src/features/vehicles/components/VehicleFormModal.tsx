@@ -1,10 +1,17 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useState } from "react";
+import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
 import { useCreateVehicle } from "../hooks/useVehicles";
-import { X } from "lucide-react";
+import PhotoUrlPreview from "./PhotoUrlPreview";
+
+const MAX_PHOTOS = 6;
+
+const httpUrl = (v: string) =>
+  v.trim() !== "" && /^https?:\/\//i.test(v) && URL.canParse(v.trim());
 
 // Espejo de createVehicleSchema del backend; se crea siempre como PUBLICADO
 const vehicleSchema = z.object({
@@ -29,6 +36,14 @@ const vehicleSchema = z.object({
   transmission: z.string().min(1, "La transmisión es obligatoria").max(40, "Máximo 40 caracteres"),
   color: z.string().min(1, "El color es obligatorio").max(40, "Máximo 40 caracteres"),
   description: z.string().max(2000, "Máximo 2000 caracteres").optional(),
+  // URLs opcionales: solo se validan cuando tienen texto (los vacíos se ignoran)
+  photos: z
+    .array(z.object({ url: z.string() }))
+    .max(MAX_PHOTOS, `Máximo ${MAX_PHOTOS} fotos`)
+    .refine(
+      (photos) => photos.every((p) => httpUrl(p.url)),
+      { message: "Hay URLs inválidas", path: ["photos"] }
+    ),
 });
 
 // Input = valores crudos del formulario (coerce recibe unknown); Output = ya convertidos
@@ -42,9 +57,11 @@ interface VehicleFormModalProps {
 
 export default function VehicleFormModal({ open, onClose }: VehicleFormModalProps) {
   const createMutation = useCreateVehicle();
+  const [photosOpen, setPhotosOpen] = useState(false);
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<VehicleFormInput, unknown, VehicleFormOutput>({
@@ -52,16 +69,25 @@ export default function VehicleFormModal({ open, onClose }: VehicleFormModalProp
     defaultValues: {
       mileage: "0",
       description: "",
+      photos: [{ url: "" }],
     },
   });
+
+  const { fields, append, remove } = useFieldArray({ control, name: "photos" });
+  const photoUrls = useWatch({ control, name: "photos" }) ?? [];
 
   if (!open) return null;
 
   const onSubmit = (values: VehicleFormOutput) => {
+    const photos = values.photos
+      .map((p) => p.url.trim())
+      .filter(Boolean);
+
     createMutation.mutate(
       {
         ...values,
         description: values.description || undefined,
+        photos: photos.length > 0 ? photos : undefined,
       },
       {
         onSuccess: () => {
@@ -201,9 +227,82 @@ export default function VehicleFormModal({ open, onClose }: VehicleFormModalProp
             {errors.description && <p className="error-message">{errors.description.message}</p>}
           </div>
 
+          {/* Sección opcional y plegable de fotos */}
+          <div className="border border-gris-200 rounded-btn overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setPhotosOpen((v) => !v)}
+              aria-expanded={photosOpen}
+              aria-controls="vehicle-photos-section"
+              className="w-full flex items-center justify-between gap-2 p-3 text-left text-sm font-medium text-grafito hover:bg-gris-100 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                Fotos (opcional) <span className="text-gris-500 font-normal">— la primera será la principal</span>
+              </span>
+              {photosOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </button>
+
+            {photosOpen && (
+              <div id="vehicle-photos-section" className="p-3 pt-0 space-y-3">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="space-y-1">
+                    <label htmlFor={`photo-${index}`} className="label-field">
+                      Foto {index + 1}
+                    </label>
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 space-y-1">
+                        <input
+                          id={`photo-${index}`}
+                          type="url"
+                          {...register(`photos.${index}.url`)}
+                          className="input-field"
+                          placeholder="https://ejemplo.com/foto.jpg"
+                          aria-invalid={!!errors.photos?.[index]}
+                        />
+                        {errors.photos?.[index]?.url && (
+                          <p className="error-message">{errors.photos[index]?.url?.message}</p>
+                        )}
+                      </div>
+                      <PhotoUrlPreview
+                        url={photoUrls[index]?.url ?? ""}
+                        label={`Vista previa de la foto ${index + 1}`}
+                      />
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => remove(index)}
+                          aria-label={`Quitar foto ${index + 1}`}
+                          className="p-2 mt-0.5 text-gris-500 hover:text-error hover:bg-error/10 rounded-btn"
+                        >
+                          <X size={18} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {errors.photos && !Array.isArray(errors.photos) && errors.photos.message && (
+                  <p className="error-message">{errors.photos.message}</p>
+                )}
+
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => append({ url: "" })}
+                    disabled={fields.length >= MAX_PHOTOS}
+                    className="btn-outline inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus size={16} /> Añadir foto
+                  </button>
+                  <span className="text-xs text-gris-500">{fields.length}/{MAX_PHOTOS}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
           <p className="text-xs text-gris-500">
             El vehículo se crea con estado <strong>PUBLICADO</strong>; puedes cambiarlo desde la
-            tabla. La gestión de fotos estará disponible más adelante.
+            tabla. Las fotos son opcionales: si no se agregan, se mostrará una imagen genérica.
           </p>
 
           {createMutation.isError && (
