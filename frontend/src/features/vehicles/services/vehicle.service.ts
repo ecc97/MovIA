@@ -5,18 +5,19 @@ import type {
   VehicleCreateData,
   VehicleDetail,
   VehicleFacets,
+  VehicleInventoryParams,
   VehicleList,
   VehicleQueryParams,
   VehicleSummary,
   VehicleUpdateData,
 } from "../types";
 
-function buildQueryString(params?: VehicleQueryParams): string {
+function buildQueryString<T extends object>(params?: T): string {
   if (!params) return "";
   const search = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== "") {
-      search.set(k, v);
+      search.set(k, String(v));
     }
   });
   const qs = search.toString();
@@ -28,10 +29,8 @@ export async function getVehicles(params?: VehicleQueryParams): Promise<VehicleS
   return response.data ?? [];
 }
 
-export async function getVehiclesPage(
-  params?: VehicleQueryParams
-): Promise<VehicleList> {
-  return apiFetch<VehicleList>(`/api/vehicles${buildQueryString(params)}`);
+export async function getInventoryPage(params?: VehicleInventoryParams): Promise<VehicleList> {
+  return apiFetch<VehicleList>(`/api/vehicles/inventory${buildQueryString(params)}`);
 }
 
 export async function getVehicleFacets(): Promise<VehicleFacets> {
@@ -47,7 +46,7 @@ export async function getVehicle(id: string): Promise<VehicleDetail> {
 export async function createVehicle(data: VehicleCreateData): Promise<VehicleDetail> {
   const response = await apiFetch<{ data: VehicleDetail }>("/api/vehicles", {
     method: "POST",
-    body: JSON.stringify({ ...data, status: "PUBLICADO" }),
+    body: JSON.stringify({ ...data, status: data.status ?? "PUBLICADO" }),
   });
   return response.data;
 }

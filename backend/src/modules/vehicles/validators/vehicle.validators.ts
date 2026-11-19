@@ -23,6 +23,16 @@ export const vehicleQuerySchema = z.object({
 
 export type VehicleQuery = z.infer<typeof vehicleQuerySchema>;
 
+// --- Listado de inventario (solo ADMIN, todos los estados) ---
+
+export const inventoryQuerySchema = z.object({
+  status: z.enum(["BORRADOR", "PUBLICADO", "ARCHIVADO"]).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(12),
+});
+
+export type InventoryQuery = z.infer<typeof inventoryQuerySchema>;
+
 // --- CRUD inventario (solo ADMIN) ---
 
 // URL de foto compartida entre crear y editar fotos

@@ -1,5 +1,5 @@
 # MOVIA — Concesionario Web MVP (API REST)
-# OpenAPI 3.0.3 — documentación de los 15 endpoints actuales.
+# OpenAPI 3.0.3 — documentación de los 17 endpoints actuales.
 # Regla del proyecto: todo endpoint nuevo o actualizado se refleja aquí.
 # Errores documentados tal cual se comportan hoy (ver bitácora api-openapi-swagger.md).
 
@@ -107,7 +107,7 @@ paths:
     post:
       tags: [Vehículos]
       summary: Crear vehículo (solo ADMIN)
-      description: Crea un vehículo de inventario. `status` por defecto `PUBLICADO`. No maneja fotos (pendiente).
+      description: Crea un vehículo de inventario. `status` por defecto `PUBLICADO`. Acepta `photos` opcionales (máximo 6; el orden del array define el principal). Para editar fotos después usa `PUT /api/vehicles/{id}/photos`.
       operationId: createVehicle
       security: [{ cookieAuth: [] }]
       requestBody:
@@ -156,6 +156,34 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/VehicleFacetsResponse" }
+
+  /api/vehicles/inventory:
+    get:
+      tags: [Vehículos]
+      summary: Listar todo el inventario (solo ADMIN)
+      description: |
+        Devuelve vehículos en **cualquier estado** (`BORRADOR | PUBLICADO | ARCHIVADO`), a diferencia
+        del catálogo público, que solo muestra `PUBLICADO`. Sin `status` se listan todos.
+        Ordenado por `createdAt` descendente; mismo envelope `{ data, pagination }` que el catálogo.
+        Registrada antes de `/api/vehicles/{id}` para que Express no trate `inventory` como ID.
+      operationId: listInventory
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/VehicleStatus" }
+          description: Si se omite, se devuelven todos los estados.
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Inventario + paginación
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VehicleListResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/vehicles/{id}:
     get:

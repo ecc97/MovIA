@@ -3,7 +3,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { AuthenticatedRequest } from "../../../middlewares/authenticate.js";
 import { vehicleService } from "../services/vehicle.service.js";
-import { vehicleQuerySchema, createVehicleSchema, updateVehicleSchema, vehicleIdParamSchema, updateVehicleStatusSchema, updateVehiclePhotosSchema } from "../validators/vehicle.validators.js";
+import { vehicleQuerySchema, inventoryQuerySchema, createVehicleSchema, updateVehicleSchema, vehicleIdParamSchema, updateVehicleStatusSchema, updateVehiclePhotosSchema } from "../validators/vehicle.validators.js";
 
 export class VehicleController {
   async list(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -15,25 +15,50 @@ export class VehicleController {
       }
 
       const result = await vehicleService.listPublished(parse.data);
-      const formatter = new Intl.NumberFormat("es-CO", {
-        style: "currency",
-        currency: "COP",
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      });
-
-      res.json({
-        data: result.items.map((item) => ({ ...item, priceFormatted: formatter.format(item.price) })),
-        pagination: {
-          page: parse.data.page,
-          limit: parse.data.limit,
-          total: result.total,
-          totalPages: Math.ceil(result.total / parse.data.limit),
-        },
-      });
+      this.sendList(res, result.items, result.total, parse.data.page, parse.data.limit);
     } catch (err) {
       next(err);
     }
+  }
+
+  async listInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const parse = inventoryQuerySchema.safeParse(req.query);
+      if (!parse.success) {
+        res.status(400).json({ error: "validacion_error", details: parse.error.errors });
+        return;
+      }
+
+      const result = await vehicleService.listInventory(parse.data);
+      this.sendList(res, result.items, result.total, parse.data.page, parse.data.limit);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  private sendList(
+    res: Response,
+    items: Awaited<ReturnType<typeof vehicleService.listInventory>>["items"],
+    total: number,
+    page: number,
+    limit: number
+  ): void {
+    const formatter = new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+
+    res.json({
+      data: items.map((item) => ({ ...item, priceFormatted: formatter.format(item.price) })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   }
 
   async facets(req: Request, res: Response, next: NextFunction): Promise<void> {

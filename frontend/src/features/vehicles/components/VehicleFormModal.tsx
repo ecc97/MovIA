@@ -13,7 +13,7 @@ const MAX_PHOTOS = 6;
 const httpUrl = (v: string) =>
   v.trim() !== "" && /^https?:\/\//i.test(v) && URL.canParse(v.trim());
 
-// Espejo de createVehicleSchema del backend; se crea siempre como PUBLICADO
+// Espejo de createVehicleSchema del backend; status: PUBLICADO por defecto o BORRADOR
 const vehicleSchema = z.object({
   make: z.string().min(1, "La marca es obligatoria").max(60, "Máximo 60 caracteres"),
   model: z.string().min(1, "El modelo es obligatorio").max(60, "Máximo 60 caracteres"),
@@ -53,9 +53,10 @@ type VehicleFormOutput = z.output<typeof vehicleSchema>;
 interface VehicleFormModalProps {
   open: boolean;
   onClose: () => void;
+  onCreated?: (status: "BORRADOR" | "PUBLICADO") => void;
 }
 
-export default function VehicleFormModal({ open, onClose }: VehicleFormModalProps) {
+export default function VehicleFormModal({ open, onClose, onCreated }: VehicleFormModalProps) {
   const createMutation = useCreateVehicle();
   const [photosOpen, setPhotosOpen] = useState(false);
 
@@ -78,7 +79,7 @@ export default function VehicleFormModal({ open, onClose }: VehicleFormModalProp
 
   if (!open) return null;
 
-  const onSubmit = (values: VehicleFormOutput) => {
+  const onSubmit = (values: VehicleFormOutput, status: "BORRADOR" | "PUBLICADO") => {
     const photos = values.photos
       .map((p) => p.url.trim())
       .filter(Boolean);
@@ -88,14 +89,19 @@ export default function VehicleFormModal({ open, onClose }: VehicleFormModalProp
         ...values,
         description: values.description || undefined,
         photos: photos.length > 0 ? photos : undefined,
+        status,
       },
       {
         onSuccess: () => {
+          onCreated?.(status);
           onClose();
         },
       }
     );
   };
+
+  const submitWith = (status: "BORRADOR" | "PUBLICADO") =>
+    handleSubmit((values) => onSubmit(values, status))();
 
   return (
     <div
@@ -118,7 +124,11 @@ export default function VehicleFormModal({ open, onClose }: VehicleFormModalProp
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <form
+          onSubmit={handleSubmit((values) => onSubmit(values, "PUBLICADO"))}
+          className="space-y-4"
+          noValidate
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="make" className="label-field">
@@ -301,8 +311,10 @@ export default function VehicleFormModal({ open, onClose }: VehicleFormModalProp
           </div>
 
           <p className="text-xs text-gris-500">
-            El vehículo se crea con estado <strong>PUBLICADO</strong>; puedes cambiarlo desde la
-            tabla. Las fotos son opcionales: si no se agregan, se mostrará una imagen genérica.
+            <strong>Crear vehículo</strong> lo publica de inmediato;{" "}
+            <strong>Guardar como borrador</strong> lo deja fuera del catálogo hasta que lo publiques
+            con el icono de ojo en la tabla. Las fotos son opcionales: si no se agregan, se mostrará
+            una imagen genérica.
           </p>
 
           {createMutation.isError && (
@@ -319,11 +331,20 @@ export default function VehicleFormModal({ open, onClose }: VehicleFormModalProp
               Cancelar
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={() => submitWith("BORRADOR")}
+              disabled={createMutation.isPending}
+              className="btn-outline"
+            >
+              Guardar como borrador
+            </button>
+            <button
+              type="button"
+              onClick={() => submitWith("PUBLICADO")}
               disabled={createMutation.isPending}
               className="btn-primary"
             >
-              {createMutation.isPending ? "Creando..." : "Crear vehículo"}
+              {createMutation.isPending ? "Guardando..." : "Crear vehículo"}
             </button>
           </div>
         </form>

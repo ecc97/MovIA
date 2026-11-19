@@ -36,4 +36,13 @@ export interface InquirySummary {
 export interface InquiryListResponse {
   items: InquirySummary[];
   total: number;
+  page: number;
+  limit: number;
+}
+
+// Contrato de GET /api/inquiries (inquiryQuerySchema del backend)
+export interface InquiryQueryParams {
+  status?: InquiryStatus;
+  page?: number;
+  limit?: number;
 }

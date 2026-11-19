@@ -58,6 +58,13 @@ export interface VehicleQueryParams {
   limit?: string;
 }
 
+// Contrato de GET /api/vehicles/inventory (solo ADMIN, todos los estados)
+export interface VehicleInventoryParams {
+  status?: VehicleStatus;
+  page?: number;
+  limit?: number;
+}
+
 // GET /api/vehicles/meta (años y marcas de vehículos PUBLICADO)
 export interface VehicleFacets {
   years: number[];
@@ -79,6 +86,8 @@ export interface VehicleCreateData {
   description?: string;
   // Fotos por URL (opcional); el orden del array define el orden (1 = principal)
   photos?: string[];
+  // Guardar como borrador (no visible en catálogo) o publicar de inmediato (default)
+  status?: "BORRADOR" | "PUBLICADO";
 }
 
 // PATCH /api/vehicles/:id acepta actualización parcial (sin fotos: endpoints aparte)

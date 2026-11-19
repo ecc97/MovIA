@@ -31,12 +31,13 @@ export default function PanelDashboard() {
   // GET /api/vehicles solo devuelve PUBLICADO (endpoint público)
   const { data: vehicles } = useVehicles();
   const { data: inquiriesData, isLoading: loadingInquiries } = useInquiries();
+  const { data: newInquiriesData } = useInquiries({ status: "NUEVA", limit: 1 });
 
   const stats = {
     totalVehicles: vehicles?.length ?? 0,
     publishedVehicles: vehicles?.filter((v) => v.status === "PUBLICADO").length ?? 0,
     totalInquiries: inquiriesData?.total ?? 0,
-    newInquiries: inquiriesData?.items?.filter((i) => i.status === "NUEVA").length ?? 0,
+    newInquiries: newInquiriesData?.total ?? 0,
   };
 
   const recentInquiries: InquirySummary[] = inquiriesData?.items?.slice(0, 5) ?? [];

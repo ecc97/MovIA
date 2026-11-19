@@ -5,6 +5,7 @@ import type { InquiryStatus } from "@/types";
 import type {
   InquiryCreateData,
   InquiryListResponse,
+  InquiryQueryParams,
   InquiryResponse,
   InquirySummary,
 } from "../types";
@@ -16,8 +17,15 @@ export async function createInquiry(data: InquiryCreateData): Promise<InquiryRes
   });
 }
 
-export async function getInquiries(): Promise<InquiryListResponse> {
-  return apiFetch<InquiryListResponse>("/api/inquiries");
+export async function getInquiries(params?: InquiryQueryParams): Promise<InquiryListResponse> {
+  const search = new URLSearchParams();
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      search.set(key, String(value));
+    }
+  });
+  const query = search.toString();
+  return apiFetch<InquiryListResponse>(`/api/inquiries${query ? `?${query}` : ""}`);
 }
 
 export async function updateInquiryStatus(

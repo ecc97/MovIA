@@ -1,12 +1,16 @@
 // MOVIA — Servicio de vehículos (+lógica de negocio)
 
 import { vehicleRepo } from "../repositories/vehicle.repository.js";
-import type { VehicleQuery, CreateVehicle, UpdateVehicle, UpdateVehicleStatus, UpdateVehiclePhotos } from "../validators/vehicle.validators.js";
+import type { VehicleQuery, InventoryQuery, CreateVehicle, UpdateVehicle, UpdateVehicleStatus, UpdateVehiclePhotos } from "../validators/vehicle.validators.js";
 import type { VehicleDetail } from "../types/vehicle.types.js";
 
 export class VehicleService {
   async listPublished(query: VehicleQuery) {
     return vehicleRepo.findPublished(query);
+  }
+
+  async listInventory(query: InventoryQuery) {
+    return vehicleRepo.findAll(query);
   }
 
   async getFacets(): Promise<{ years: number[]; makes: string[] }> {

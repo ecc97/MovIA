@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Save, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit, Save, X } from "lucide-react";
 import { useInquiries, useUpdateInquiry } from "@/features/inquiries/hooks/useInquiries";
 import type { InquirySummary } from "@/features/inquiries/types";
 import type { InquiryStatus } from "@/types";
+
+const PAGE_SIZE = 10;
 
 const STATUS_CONFIG: Record<InquiryStatus, { label: string; color: string }> = {
   NUEVA: { label: "Nueva", color: "bg-dorado text-grafito" },
@@ -21,13 +23,25 @@ interface EditState {
 }
 
 export default function ConsultasPage() {
-  const { data, isLoading, isError } = useInquiries();
+  const [statusFilter, setStatusFilter] = useState<InquiryStatus | "TODOS">("TODOS");
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isError, isFetching } = useInquiries({
+    status: statusFilter === "TODOS" ? undefined : statusFilter,
+    page,
+    limit: PAGE_SIZE,
+  });
   const updateMutation = useUpdateInquiry();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<EditState | null>(null);
 
   const inquiries = data?.items ?? [];
   const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / (data?.limit ?? PAGE_SIZE)));
+
+  const changeFilter = (value: InquiryStatus | "TODOS") => {
+    setStatusFilter(value);
+    setPage(1);
+  };
 
   const handleEdit = (inquiry: InquirySummary) => {
     setEditingId(inquiry.id);
@@ -82,8 +96,28 @@ export default function ConsultasPage() {
       <div>
         <h1 className="font-sora text-2xl font-bold text-grafito">Consultas</h1>
         <p className="text-gris-600 mt-1">
-          {total} consultas • {inquiries.length} mostradas
+          {total} consultas • Página {data?.page ?? page} de {totalPages}
         </p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <label htmlFor="inquiry-status-filter" className="label-field mb-0">
+          Estado
+        </label>
+        <select
+          id="inquiry-status-filter"
+          className="input-field w-auto"
+          value={statusFilter}
+          onChange={(e) => changeFilter(e.target.value as InquiryStatus | "TODOS")}
+        >
+          <option value="TODOS">Todos</option>
+          {(Object.keys(STATUS_CONFIG) as InquiryStatus[]).map((status) => (
+            <option key={status} value={status}>
+              {STATUS_CONFIG[status].label}
+            </option>
+          ))}
+        </select>
+        {isFetching && <span className="text-xs text-gris-500">Actualizando…</span>}
       </div>
 
       {updateMutation.isError && (
@@ -94,10 +128,14 @@ export default function ConsultasPage() {
 
       {inquiries.length === 0 ? (
         <div className="text-center py-12 text-gris-500">
-          <p>No hay consultas registradas</p>
+          <p>
+            {statusFilter === "TODOS"
+              ? "No hay consultas registradas"
+              : `No hay consultas con estado ${STATUS_CONFIG[statusFilter].label}`}
+          </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-card border border-gris-200">
+        <div className={`overflow-x-auto rounded-card border border-gris-200 ${isFetching ? "opacity-60" : ""}`}>
           <table className="w-full text-sm">
             <thead className="bg-gris-100">
               <tr>
@@ -124,6 +162,28 @@ export default function ConsultasPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="btn-outline inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft size={16} /> Anterior
+          </button>
+          <span className="text-sm text-gris-600">
+            Página {page} de {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="btn-outline inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Siguiente <ChevronRight size={16} />
+          </button>
         </div>
       )}
     </div>
@@ -175,9 +235,9 @@ function InquiryRow({
               setEditData({ ...editData, status: e.target.value as InquiryStatus })
             }
           >
-            {Object.entries(STATUS_CONFIG).map(([status, config]) => (
+            {(Object.keys(STATUS_CONFIG) as InquiryStatus[]).map((status) => (
               <option key={status} value={status}>
-                {config.label}
+                {STATUS_CONFIG[status].label}
               </option>
             ))}
           </select>
@@ -211,14 +271,14 @@ function InquiryRow({
               onClick={() => handleSave(inquiry)}
               disabled={isSaving}
               aria-label="Guardar cambios"
-              className="p-1 text-exito hover:bg-exito/10 rounded full"
+              className="p-1 text-exito hover:bg-exito/10 rounded-full"
             >
               <Save size={16} />
             </button>
             <button
               onClick={handleCancel}
               aria-label="Cancelar edición"
-              className="p-1 text-gris-500 hover:bg-gris-200 rounded full"
+              className="p-1 text-gris-500 hover:bg-gris-200 rounded-full"
             >
               <X size={16} />
             </button>
@@ -227,7 +287,7 @@ function InquiryRow({
           <button
             onClick={() => handleEdit(inquiry)}
             aria-label="Editar estado y notas"
-            className="p-1 text-dorado hover:bg-dorado/10 rounded full"
+            className="p-1 text-dorado hover:bg-dorado/10 rounded-full"
           >
             <Edit size={16} />
           </button>

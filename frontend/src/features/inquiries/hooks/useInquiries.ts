@@ -4,12 +4,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getInquiries, updateInquiryNotes, updateInquiryStatus } from "../services/inquiry.service";
-import type { InquiryStatus, InquirySummary } from "../types";
+import type { InquiryQueryParams, InquiryStatus, InquirySummary } from "../types";
 
-export function useInquiries() {
+export function useInquiries(params?: InquiryQueryParams) {
   return useQuery({
-    queryKey: ["inquiries"],
-    queryFn: () => getInquiries(),
+    queryKey: ["inquiries", params ?? {}],
+    queryFn: () => getInquiries(params),
   });
 }
 

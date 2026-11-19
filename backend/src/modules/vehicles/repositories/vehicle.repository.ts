@@ -4,6 +4,7 @@ import prisma from "../../../config/database.js";
 import type { VehicleSummary, VehicleDetail } from "../types/vehicle.types.js";
 import type {
   VehicleQuery,
+  InventoryQuery,
   CreateVehicle,
   UpdateVehicle,
   UpdateVehicleStatus,
@@ -11,7 +12,7 @@ import type {
 
 export class VehicleRepository {
   async findPublished(query: VehicleQuery): Promise<{ items: VehicleSummary[]; total: number }> {
-    const where = this.buildWhere(query);
+    const where = { ...this.buildWhere(query), status: "PUBLICADO" as const };
     const skip = (query.page - 1) * query.limit;
 
     const [items, total] = await Promise.all([
@@ -27,23 +28,29 @@ export class VehicleRepository {
       prisma.vehicle.count({ where }),
     ]);
 
-    const formatted = items.map((v) => ({
-      id: v.id,
-      make: v.make,
-      model: v.model,
-      year: v.year,
-      price: v.price,
-      mileage: v.mileage,
-      condition: v.condition,
-      bodyType: v.bodyType,
-      fuel: v.fuel,
-      transmission: v.transmission,
-      color: v.color,
-      status: v.status,
-      photos: v.photos.map(({ url, order }) => ({ url, order })),
-    }));
+    const formatted = items.map((v) => this.toSummary(v));
 
     return { items: formatted, total };
+  }
+
+  async findAll(query: InventoryQuery): Promise<{ items: VehicleSummary[]; total: number }> {
+    const where = query.status ? { status: query.status } : {};
+    const skip = (query.page - 1) * query.limit;
+
+    const [items, total] = await Promise.all([
+      prisma.vehicle.findMany({
+        where,
+        skip,
+        take: query.limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          photos: { select: { url: true, order: true }, orderBy: { order: "asc" } },
+        },
+      }),
+      prisma.vehicle.count({ where }),
+    ]);
+
+    return { items: items.map((v) => this.toSummary(v)), total };
   }
 
   async findFacets(): Promise<{ years: number[]; makes: string[] }> {
@@ -172,6 +179,38 @@ export class VehicleRepository {
       }),
     ]);
     return this.findById(id);
+  }
+
+  private toSummary(v: {
+    id: string;
+    make: string;
+    model: string;
+    year: number;
+    price: number;
+    mileage: number;
+    condition: string;
+    bodyType: string;
+    fuel: string;
+    transmission: string;
+    color: string;
+    status: string;
+    photos: Array<{ url: string; order: number }>;
+  }): VehicleSummary {
+    return {
+      id: v.id,
+      make: v.make,
+      model: v.model,
+      year: v.year,
+      price: v.price,
+      mileage: v.mileage,
+      condition: v.condition,
+      bodyType: v.bodyType,
+      fuel: v.fuel,
+      transmission: v.transmission,
+      color: v.color,
+      status: v.status,
+      photos: v.photos.map(({ url, order }) => ({ url, order })),
+    };
   }
 
   private buildWhere(q: VehicleQuery) {
