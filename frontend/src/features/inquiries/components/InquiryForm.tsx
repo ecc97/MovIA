@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createInquiry } from '../services/inquiry.service';
 import { Mail, User, Phone, MessageSquare } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
 
 const inquirySchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -30,6 +31,7 @@ export default function InquiryForm({
   vehicleId,
 }: InquiryFormProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const {
     register,
@@ -45,6 +47,7 @@ export default function InquiryForm({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inquiries'] });
       reset();
+      toast.success('Tu consulta ha sido enviada. Te contactaremos pronto.');
     },
   });
 
@@ -130,18 +133,8 @@ export default function InquiryForm({
         {errors.message && <p className="error-message">{errors.message.message}</p>}
       </div>
 
-      {mutation.isSuccess && (
-        <div className="bg-exito/10 border border-exito/30 rounded-btn p-3 text-exito text-sm">
-          ✓ Tu consulta ha sido enviada. Te contactaremos pronto.
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={isSubmitting || mutation.isSuccess}
-        className="btn-primary w-full"
-      >
-        {isSubmitting ? 'Enviando...' : mutation.isSuccess ? 'Enviado' : 'Enviar consulta'}
+      <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+        {isSubmitting ? 'Enviando...' : 'Enviar consulta'}
       </button>
     </form>
   );

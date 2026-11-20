@@ -5,9 +5,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMe, logout as logoutApi } from "../services/auth.service";
 import type { User } from "../types";
 import { AuthContext } from "../context";
+import { useToast } from "@/components/ui/Toast";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const { data: user, isLoading, isError, refetch } = useQuery<User | null>({
     queryKey: ["authMe"],
@@ -23,10 +25,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const handleLogout = async () => {
-    await logoutApi();
-    await queryClient.setQueryData(["authMe"], null);
-    // Clear all queries
-    await queryClient.clear();
+    try {
+      await logoutApi();
+      toast.success("Sesión cerrada");
+      await queryClient.setQueryData(["authMe"], null);
+      await queryClient.clear();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo cerrar la sesión");
+    }
   };
 
   return (

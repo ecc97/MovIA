@@ -9,6 +9,8 @@ import {
 } from "@/features/vehicles/hooks/useVehicles";
 import VehicleFormModal from "@/features/vehicles/components/VehicleFormModal";
 import VehiclePhotosModal from "@/features/vehicles/components/VehiclePhotosModal";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import type { VehicleStatus, VehicleSummary } from "@/features/vehicles/types";
 import { Archive, ChevronLeft, ChevronRight, Edit, Eye, Images, Plus, Save, X } from "lucide-react";
 
@@ -30,6 +32,8 @@ export default function InventarioPage() {
   });
   const updateMutation = useUpdateVehicle();
   const statusMutation = useUpdateVehicleStatus();
+  const { confirm } = useConfirm();
+  const toast = useToast();
   const [editVehicle, setEditVehicle] = useState<VehicleSummary | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [photosVehicle, setPhotosVehicle] = useState<VehicleSummary | null>(null);
@@ -51,7 +55,12 @@ export default function InventarioPage() {
     const { id, make, year, price } = editVehicle;
     updateMutation.mutate(
       { id, data: { make, year, price } },
-      { onSuccess: () => setEditVehicle(null) }
+      {
+        onSuccess: () => {
+          toast.success("Cambios guardados");
+          setEditVehicle(null);
+        },
+      }
     );
   };
 
@@ -59,8 +68,24 @@ export default function InventarioPage() {
     setEditVehicle(null);
   };
 
-  const changeStatus = (vehicle: VehicleSummary, status: VehicleStatus) => {
-    statusMutation.mutate({ id: vehicle.id, status });
+  const changeStatus = async (vehicle: VehicleSummary, status: VehicleStatus) => {
+    if (status === "ARCHIVADO") {
+      const accepted = await confirm({
+        title: "¿Archivar vehículo?",
+        description:
+          "Dejará de mostrarse en el catálogo público. Podrás publicarlo de nuevo desde el inventario.",
+        confirmLabel: "Archivar",
+        variant: "danger",
+      });
+      if (!accepted) return;
+    }
+    statusMutation.mutate(
+      { id: vehicle.id, status },
+      {
+        onSuccess: () =>
+          toast.success(status === "PUBLICADO" ? "Vehículo publicado" : "Vehículo archivado"),
+      }
+    );
   };
 
   if (isLoading) {

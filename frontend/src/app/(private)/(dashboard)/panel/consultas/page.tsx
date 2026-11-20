@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight, Edit, Save, X } from "lucide-react";
 import { useInquiries, useUpdateInquiry } from "@/features/inquiries/hooks/useInquiries";
 import type { InquirySummary } from "@/features/inquiries/types";
 import type { InquiryStatus } from "@/types";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 
 const PAGE_SIZE = 10;
 
@@ -31,6 +33,8 @@ export default function ConsultasPage() {
     limit: PAGE_SIZE,
   });
   const updateMutation = useUpdateInquiry();
+  const { confirm } = useConfirm();
+  const toast = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<EditState | null>(null);
 
@@ -52,8 +56,22 @@ export default function ConsultasPage() {
     });
   };
 
-  const handleSave = (inquiry: InquirySummary) => {
+  const handleSave = async (inquiry: InquirySummary) => {
     if (editingId !== inquiry.id || !editData) return;
+
+    const closingStates: InquiryStatus[] = ["VENDIDA", "DESCARTADA"];
+    if (editData.status !== inquiry.status && closingStates.includes(editData.status)) {
+      const label = STATUS_CONFIG[editData.status].label;
+      const accepted = await confirm({
+        title: `¿Marcar la consulta como ${label}?`,
+        description:
+          "Es un estado de cierre: reabrir consultas cerradas todavía no está disponible desde el panel.",
+        confirmLabel: `Marcar como ${label}`,
+        variant: "danger",
+      });
+      if (!accepted) return;
+    }
+
     updateMutation.mutate(
       {
         id: inquiry.id,
@@ -63,6 +81,7 @@ export default function ConsultasPage() {
       },
       {
         onSuccess: () => {
+          toast.success("Consulta actualizada");
           setEditingId(null);
           setEditData(null);
         },

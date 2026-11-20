@@ -7,6 +7,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
 import { useCreateVehicle } from "../hooks/useVehicles";
 import PhotoUrlPreview from "./PhotoUrlPreview";
+import { useToast } from "@/components/ui/Toast";
 
 const MAX_PHOTOS = 6;
 
@@ -58,6 +59,7 @@ interface VehicleFormModalProps {
 
 export default function VehicleFormModal({ open, onClose, onCreated }: VehicleFormModalProps) {
   const createMutation = useCreateVehicle();
+  const toast = useToast();
   const [photosOpen, setPhotosOpen] = useState(false);
 
   const {
@@ -93,6 +95,7 @@ export default function VehicleFormModal({ open, onClose, onCreated }: VehicleFo
       },
       {
         onSuccess: () => {
+          toast.success(status === "BORRADOR" ? "Borrador guardado" : "Vehículo creado");
           onCreated?.(status);
           onClose();
         },

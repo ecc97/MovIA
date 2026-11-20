@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { Role } from "@/types";
 
 interface NavItem {
@@ -29,6 +30,7 @@ export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { logout } = useAuth();
+  const { confirm } = useConfirm();
 
   const navItems: NavItem[] = [
     { name: "Dashboard", href: "/panel", icon: LayoutDashboard, isDefault: true },
@@ -39,7 +41,12 @@ export default function Sidebar({ role }: SidebarProps) {
   const isActive = (href: string) => pathname === href;
 
   const handleLogout = async () => {
-    await logout();
+    const accepted = await confirm({
+      title: "¿Cerrar sesión?",
+      description: "Necesitarás volver a ingresar para acceder al panel.",
+      confirmLabel: "Cerrar sesión",
+    });
+    if (accepted) await logout();
   };
 
   return (

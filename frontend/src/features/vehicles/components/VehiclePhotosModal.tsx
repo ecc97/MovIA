@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, ImageIcon, Plus, Star, X } from "lucide-react";
 import PhotoUrlPreview from "./PhotoUrlPreview";
 import { useUpdateVehiclePhotos } from "../hooks/useVehicles";
+import { useToast } from "@/components/ui/Toast";
 import type { VehicleSummary } from "@/features/vehicles/types";
 
 const MAX_PHOTOS = 6;
@@ -22,6 +23,7 @@ export default function VehiclePhotosModal({ vehicle, onClose }: VehiclePhotosMo
   const [newUrl, setNewUrl] = useState("");
   const [addError, setAddError] = useState("");
   const saveMutation = useUpdateVehiclePhotos();
+  const toast = useToast();
 
   const move = (index: number, direction: -1 | 1) => {
     const target = index + direction;
@@ -69,7 +71,12 @@ export default function VehiclePhotosModal({ vehicle, onClose }: VehiclePhotosMo
   const save = () => {
     saveMutation.mutate(
       { id: vehicle.id, photos },
-      { onSuccess: () => onClose() }
+      {
+        onSuccess: () => {
+          toast.success("Fotos actualizadas");
+          onClose();
+        },
+      }
     );
   };
 

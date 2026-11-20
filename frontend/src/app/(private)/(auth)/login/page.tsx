@@ -9,6 +9,7 @@ import { z } from "zod";
 import { login } from "@/features/auth/services/auth.service";
 import type { LoginResponse } from "@/features/auth/types";
 import { useAuthSafe } from "@/features/auth/hooks/useAuth";
+import { useToast } from "@/components/ui/Toast";
 
 const loginSchema = z.object({
   email: z.email("Ingresa un correo electrónico válido"),
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, isLoading: isAuthLoading } = useAuthSafe();
+  const toast = useToast();
 
   const {
     register,
@@ -35,6 +37,7 @@ export default function LoginPage() {
     mutationFn: (data) => login(data.email, data.password),
     onSuccess: (response) => {
       queryClient.setQueryData(["authMe"], response.data);
+      toast.success(`Bienvenido, ${response.data.name}`);
       router.replace("/panel");
     },
   });
