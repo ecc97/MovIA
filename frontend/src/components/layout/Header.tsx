@@ -1,162 +1,175 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, User, LogOut, Loader2 } from "lucide-react";
+import { LogOut, Menu, Search, User, X } from "lucide-react";
 import { useAuthSafe } from "@/features/auth/hooks/useAuth";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { cn } from "@/lib/utils";
+
+const links = [
+  { href: "/", label: "Inicio" },
+  { href: "/catalogo", label: "Vehículos" },
+  { href: "/contacto", label: "Contacto" },
+];
 
 export default function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const { user, isLoading, logout } = useAuthSafe();
+  const { confirm } = useConfirm();
+
+  const isActive = (href: string) => pathname === href;
 
   const handleLogout = async () => {
+    const accepted = await confirm({
+      title: "¿Cerrar sesión?",
+      description: "Necesitarás volver a ingresar para acceder al panel.",
+      confirmLabel: "Cerrar sesión",
+    });
+    if (!accepted) return;
     setLoggingOut(true);
     await logout();
+    setLoggingOut(false);
   };
 
+  const closeMobile = () => setMobileOpen(false);
+
   return (
-    <header className="bg-grafito text-blanco">
-      <div className="container-movia mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="font-sora text-2xl font-bold tracking-wide">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-grafito/95 text-blanco backdrop-blur-md">
+      <div className="container-movia">
+        <div className="flex h-[72px] items-center justify-between gap-4">
+          <Link
+            href="/"
+            onClick={closeMobile}
+            className="font-sora text-xl font-bold tracking-[0.16em] text-blanco transition-colors hover:text-dorado sm:text-2xl"
+          >
             MOVIA
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
-            <Link
-              href="/"
-              className="text-sm font-medium hover:text-dorado transition-colors"
-            >
-              Inicio
-            </Link>
-            <Link
-              href="/catalogo"
-              className="text-sm font-medium hover:text-dorado transition-colors"
-            >
-              Vehículos
-            </Link>
-            <Link
-              href="/contacto"
-              className="text-sm font-medium hover:text-dorado transition-colors"
-            >
-              Contacto
-            </Link>
-            {isLoading ? (
-              <div className="w-24 h-8" />
-            ) : user ? (
-              <div className="flex items-center gap-4">
-                <Link
-                  href="/panel"
-                  className="text-sm font-medium hover:text-dorado transition-colors flex items-center gap-2"
-                >
-                  <User size={16} />
-                  <span>Panel</span>
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  disabled={loggingOut}
-                  className="text-sm font-medium hover:text-dorado transition-colors flex items-center gap-2 px-2 py-1 rounded-btn hover:bg-gris-700"
-                >
-                  {loggingOut ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <LogOut size={16} />
-                  )}
-                  <span>Cerrar sesión</span>
-                </button>
-              </div>
-            ) : null}
+          <nav aria-label="Navegación principal" className="hidden items-center gap-1 md:flex">
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={isActive(link.href) ? "page" : undefined}
+                className={cn(
+                  "relative rounded-btn px-3 py-2 text-sm font-medium transition-colors hover:text-dorado",
+                  isActive(link.href) ? "text-dorado" : "text-white/80"
+                )}
+              >
+                {link.label}
+                {isActive(link.href) && (
+                  <span className="absolute inset-x-3 -bottom-[22px] h-0.5 rounded-full bg-dorado" />
+                )}
+              </Link>
+            ))}
           </nav>
 
-          <div className="md:hidden flex items-center gap-2">
-            {isLoading ? (
-              <div className="w-24 h-8" />
-            ) : user ? (
-              <>
+          <div className="flex items-center gap-1">
+            <ThemeToggle variant="dark" className="hidden sm:flex" />
+
+            <Link
+              href="/contacto"
+              className="btn-primary hidden min-h-10 px-4 text-xs lg:inline-flex"
+            >
+              Hablar con un asesor
+            </Link>
+
+            {!isLoading && user && (
+              <div className="hidden items-center gap-1 md:flex">
                 <Link
                   href="/panel"
-                  className="p-2 rounded-btn hover:bg-gris-700"
-                  aria-label="Panel"
+                  className="flex min-h-11 items-center gap-2 rounded-btn px-3 text-sm font-medium text-white/80 transition-colors hover:text-dorado"
                 >
-                  <User size={20} />
+                  <User size={17} aria-hidden="true" />
+                  Panel
                 </Link>
                 <button
+                  type="button"
                   onClick={handleLogout}
                   disabled={loggingOut}
-                  className="p-2 rounded-btn hover:bg-gris-700"
                   aria-label="Cerrar sesión"
+                  className="flex size-11 items-center justify-center rounded-btn text-white/80 transition-colors hover:text-dorado disabled:opacity-60"
                 >
-                  {loggingOut ? (
-                    <Loader2 size={20} className="animate-spin" />
-                  ) : (
-                    <LogOut size={20} />
-                  )}
+                  <LogOut size={18} aria-hidden="true" className={loggingOut ? "animate-pulse" : ""} />
                 </button>
-              </>
-            ) : null}
+              </div>
+            )}
+
             <button
-              className="p-2 rounded-btn focus:outline-none focus:ring-2 focus:ring-dorado"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+              type="button"
+              onClick={() => setMobileOpen((open) => !open)}
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-navigation"
+              aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+              className="flex size-11 items-center justify-center rounded-btn text-blanco hover:bg-white/10 md:hidden"
             >
-              {mobileMenuOpen ? (
-                <X size={24} />
-              ) : (
-                <Menu size={24} />
-              )}
+              {mobileOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
             </button>
           </div>
         </div>
 
-        {mobileMenuOpen && (
-          <nav className="md:hidden mt-4 pb-4 border-t border-gray-700 pt-4 flex flex-col gap-4">
-            <Link
-              href="/"
-              className="text-sm font-medium hover:text-dorado transition-colors px-2 py-1"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Inicio
-            </Link>
-            <Link
-              href="/catalogo"
-              className="text-sm font-medium hover:text-dorado transition-colors px-2 py-1"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Vehículos
-            </Link>
-            <Link
-              href="/contacto"
-              className="text-sm font-medium hover:text-dorado transition-colors px-2 py-1"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Contacto
-            </Link>
-            {isLoading ? (
-              <div className="px-2 py-1 text-sm text-gris-500">Cargando...</div>
-            ) : user ? (
-              <>
+        {mobileOpen && (
+          <nav
+            id="mobile-navigation"
+            aria-label="Navegación móvil"
+            className="border-t border-white/10 py-4 md:hidden"
+          >
+            <div className="flex flex-col gap-1">
+              {links.map((link) => (
                 <Link
-                  href="/panel"
-                  className="text-sm font-medium hover:text-dorado transition-colors px-2 py-1"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Panel
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  disabled={loggingOut}
-                  className="text-sm font-medium hover:text-dorado transition-colors px-2 py-1 text-left w-full"
-                >
-                  {loggingOut ? (
-                    <Loader2 size={16} className="animate-spin inline" />
-                  ) : (
-                    <LogOut size={16} className="inline mr-2" />
+                  key={link.href}
+                  href={link.href}
+                  onClick={closeMobile}
+                  aria-current={isActive(link.href) ? "page" : undefined}
+                  className={cn(
+                    "rounded-btn px-3 py-3 text-sm font-medium transition-colors hover:bg-white/10",
+                    isActive(link.href) ? "text-dorado" : "text-white/85"
                   )}
-                  Cerrar sesión
-                </button>
-              </>
-            ) : null}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <Link
+                href="/contacto"
+                onClick={closeMobile}
+                className="btn-primary mt-2 w-full"
+              >
+                <Search size={17} aria-hidden="true" />
+                Hablar con un asesor
+              </Link>
+              {!isLoading && user && (
+                <>
+                  <Link
+                    href="/panel"
+                    onClick={closeMobile}
+                    className="rounded-btn px-3 py-3 text-sm font-medium text-white/85 hover:bg-white/10"
+                  >
+                    Panel
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeMobile();
+                      void handleLogout();
+                    }}
+                    disabled={loggingOut}
+                    className="flex items-center gap-2 rounded-btn px-3 py-3 text-left text-sm font-medium text-white/85 hover:bg-white/10"
+                  >
+                    <LogOut size={17} aria-hidden="true" />
+                    Cerrar sesión
+                  </button>
+                </>
+              )}
+              <div className="mt-2 flex items-center justify-between px-3 sm:hidden">
+                <span className="text-xs text-white/60">Tema</span>
+                <ThemeToggle variant="dark" />
+              </div>
+            </div>
           </nav>
         )}
       </div>

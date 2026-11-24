@@ -3,6 +3,7 @@
 import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { Spinner } from "@/components/ui/Spinner";
 
 /**
  * Guard para rutas exclusivas de ADMIN (inventario).
@@ -23,8 +24,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   if (isLoading || !isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-fondo-claro">
-        <div className="animate-spin w-8 h-8 border-4 border-dorado border-t-transparent rounded-full" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Spinner />
       </div>
     );
   }

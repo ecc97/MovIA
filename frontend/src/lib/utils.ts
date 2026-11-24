@@ -1,3 +1,12 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs));
+}
+
+export const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "573000000000";
+
 export function formatPriceCOP(price: number): string {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
@@ -8,8 +17,9 @@ export function formatPriceCOP(price: number): string {
 }
 
 export function getWhatsAppLink(number: string, message: string): string {
-  const cleanNumber = number.replace(/[\s\-]/g, "");
-  return `https://wa.me/57${cleanNumber}?text=${encodeURIComponent(message)}`;
+  const digits = (number || WHATSAPP_NUMBER).replace(/\D/g, "");
+  const fullNumber = digits.startsWith("57") ? digits : `57${digits}`;
+  return `https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`;
 }
 
 export function formatDate(dateString: string): string {

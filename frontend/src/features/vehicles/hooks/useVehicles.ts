@@ -2,12 +2,13 @@
 
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getVehicles, getInventoryPage, getVehicleFacets, createVehicle, updateVehicle, updateVehicleStatus, updateVehiclePhotos } from "../services/vehicle.service";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getVehicles, getVehiclePage, getInventoryPage, getVehicleFacets, getVehicle, createVehicle, updateVehicle, updateVehicleStatus, updateVehiclePhotos } from "../services/vehicle.service";
 import type {
   VehicleCreateData,
   VehicleDetail,
   VehicleInventoryParams,
+  VehicleList,
   VehicleQueryParams,
   VehicleStatus,
   VehicleSummary,
@@ -22,6 +23,22 @@ export function useVehicles(params?: VehicleQueryParams) {
   });
 }
 
+export function useVehiclePage(params?: VehicleQueryParams) {
+  return useQuery<VehicleList>({
+    queryKey: ["vehicles", "page", params ?? {}],
+    queryFn: () => getVehiclePage(params),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useVehicleDetail(id?: string, enabled = true) {
+  return useQuery<VehicleDetail>({
+    queryKey: ["vehicles", "detail", id],
+    queryFn: () => getVehicle(id!),
+    enabled: enabled && Boolean(id),
+  });
+}
+
 export function useVehicleFacets() {
   return useQuery({
     queryKey: ["vehicles", "facets"],
@@ -30,10 +47,11 @@ export function useVehicleFacets() {
 }
 
 // GET /api/vehicles/inventory es solo ADMIN y devuelve todos los estados
-export function useInventoryPage(params?: VehicleInventoryParams) {
+export function useInventoryPage(params?: VehicleInventoryParams, enabled = true) {
   return useQuery({
     queryKey: ["vehicles", "inventory", params ?? {}],
     queryFn: () => getInventoryPage(params),
+    enabled,
   });
 }
 

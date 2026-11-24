@@ -1,141 +1,157 @@
 "use client";
 
-import { useVehicles } from "@/features/vehicles/hooks/useVehicles";
+import Link from "next/link";
+import { Car, ClipboardList, MessageSquare, Sparkles } from "lucide-react";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useInventoryPage, useVehiclePage } from "@/features/vehicles/hooks/useVehicles";
 import { useInquiries } from "@/features/inquiries/hooks/useInquiries";
 import type { InquirySummary } from "@/features/inquiries/types";
-import { Car, LayoutDashboard, MessageSquare, AlertCircle } from "lucide-react";
-
-function StatsCard({ title, value, subtitle, icon }: {
-  title: string;
-  value: number;
-  subtitle: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div className="bg-blanco rounded-card p-4 shadow-sm border border-gris-200">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-dorado/10 rounded-full text-dorado">
-          {icon}
-        </div>
-        <div>
-          <p className="text-sm text-gris-600">{title}</p>
-          <p className="text-2xl font-bold text-grafito">{value.toLocaleString()}</p>
-          <p className="text-xs text-gris-500">{subtitle}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { INQUIRY_STATUS_CONFIG } from "@/features/inquiries/utils/status";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard } from "@/components/ui/StatCard";
+import { LoadingBlock } from "@/components/ui/Spinner";
+import { formatDate } from "@/lib/utils";
 
 export default function PanelDashboard() {
-  // GET /api/vehicles solo devuelve PUBLICADO (endpoint público)
-  const { data: vehicles } = useVehicles();
-  const { data: inquiriesData, isLoading: loadingInquiries } = useInquiries();
-  const { data: newInquiriesData } = useInquiries({ status: "NUEVA", limit: 1 });
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
-  const stats = {
-    totalVehicles: vehicles?.length ?? 0,
-    publishedVehicles: vehicles?.filter((v) => v.status === "PUBLICADO").length ?? 0,
-    totalInquiries: inquiriesData?.total ?? 0,
-    newInquiries: newInquiriesData?.total ?? 0,
-  };
+  const publishedQuery = useVehiclePage({ limit: "1" });
+  const inventoryQuery = useInventoryPage({ limit: 1 }, isAdmin);
+  const inquiriesQuery = useInquiries();
+  const newQuery = useInquiries({ status: "NUEVA", limit: 1 });
+  const contactQuery = useInquiries({ status: "EN_CONTACTO", limit: 1 });
+  const followQuery = useInquiries({ status: "EN_SEGUIMIENTO", limit: 1 });
 
-  const recentInquiries: InquirySummary[] = inquiriesData?.items?.slice(0, 5) ?? [];
+  const loading =
+    publishedQuery.isLoading || inquiriesQuery.isLoading || newQuery.isLoading;
+
+  if (loading) return <LoadingBlock label="Preparando el panel…" />;
+
+  const publishedTotal = publishedQuery.data?.pagination.total ?? 0;
+  const inventoryTotal = inventoryQuery.data?.pagination.total ?? 0;
+  const inquiryTotal = inquiriesQuery.data?.total ?? 0;
+  const newTotal = newQuery.data?.total ?? 0;
+  const recentInquiries: InquirySummary[] = inquiriesQuery.data?.items?.slice(0, 5) ?? [];
+
+  const stats = isAdmin
+    ? [
+        { label: "Publicados", value: publishedTotal, hint: "Visibles en el catálogo", icon: <Car size={20} aria-hidden="true" />, href: "/panel/inventario" },
+        { label: "Inventario", value: inventoryTotal, hint: "Todos los estados", icon: <ClipboardList size={20} aria-hidden="true" />, href: "/panel/inventario" },
+        { label: "Consultas", value: inquiryTotal, hint: "Recibidas", icon: <MessageSquare size={20} aria-hidden="true" />, href: "/panel/consultas" },
+        { label: "Nuevas", value: newTotal, hint: "Sin atender", icon: <Sparkles size={20} aria-hidden="true" />, href: "/panel/consultas" },
+      ]
+    : [
+        { label: "Consultas", value: inquiryTotal, hint: "Recibidas", icon: <MessageSquare size={20} aria-hidden="true" />, href: "/panel/consultas" },
+        { label: "Nuevas", value: newTotal, hint: "Sin atender", icon: <Sparkles size={20} aria-hidden="true" />, href: "/panel/consultas" },
+        { label: "En contacto", value: contactQuery.data?.total ?? 0, hint: "En atención", icon: <MessageSquare size={20} aria-hidden="true" />, href: "/panel/consultas" },
+        { label: "En seguimiento", value: followQuery.data?.total ?? 0, hint: "En evaluación", icon: <ClipboardList size={20} aria-hidden="true" />, href: "/panel/consultas" },
+      ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-sora text-2xl font-bold text-grafito">Dashboard</h1>
-        <p className="text-gris-600 mt-1">Vista general del inventario y consultas</p>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow={`Bienvenido, ${user?.name?.split(" ")[0] ?? ""}`}
+        title="Dashboard"
+        description="Vista general del inventario y las consultas de MOVIA."
+        actions={
+          isAdmin ? (
+            <Link href="/panel/inventario" className="btn-primary">
+              Gestionar inventario
+            </Link>
+          ) : (
+            <Link href="/panel/consultas" className="btn-primary">
+              Ver consultas
+            </Link>
+          )
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => (
+          <StatCard key={stat.label} {...stat} />
+        ))}
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard
-          title="Vehículos"
-          value={stats.totalVehicles}
-          subtitle="Total"
-          icon={<LayoutDashboard size={20} />}
-        />
-        <StatsCard
-          title="Publicados"
-          value={stats.publishedVehicles}
-          subtitle="Disponibles"
-          icon={<Car size={20} />}
-        />
-        <StatsCard
-          title="Consultas"
-          value={stats.totalInquiries}
-          subtitle="Total"
-          icon={<MessageSquare size={20} />}
-        />
-        <StatsCard
-          title="Nuevas"
-          value={stats.newInquiries}
-          subtitle="Pendientes"
-          icon={<AlertCircle size={20} />}
-        />
-      </div>
-
-      {/* Recent inquiries table */}
-      <section>
-        <h2 className="font-sora text-lg font-semibold text-grafito mb-4">
-          Consultas recientes
-        </h2>
-
-        {loadingInquiries || !inquiriesData ? (
-          <div className="text-center py-8 text-gris-500">Cargando...</div>
-        ) : recentInquiries.length === 0 ? (
-          <div className="text-center py-8 text-gris-500">No hay consultas registradas</div>
-        ) : (
-          <div className="overflow-x-auto rounded-card border border-gris-200">
-            <table className="w-full text-sm">
-              <thead className="bg-gris-100">
-                <tr>
-                  <th className="px-4 py-2 text-left font-medium text-grafito">Nombre</th>
-                  <th className="px-4 py-2 text-left font-medium text-grafito">Email</th>
-                  <th className="px-4 py-2 text-left font-medium text-grafito">Estado</th>
-                  <th className="px-4 py-2 text-left font-medium text-grafito">Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentInquiries.map((inq) => (
-                  <tr key={inq.id} className="border-b border-gris-200 last:border-0">
-                    <td className="px-4 py-2">{inq.name}</td>
-                    <td className="px-4 py-2">{inq.email}</td>
-                    <td className="px-4 py-2">
-                      <InquiryStatusBadge status={inq.status} />
-                    </td>
-                    <td className="px-4 py-2 text-gris-600">
-                      {new Date(inq.createdAt).toLocaleDateString("es-CO")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-sora text-lg font-semibold text-foreground">Consultas recientes</h2>
+            <p className="text-sm text-muted">Últimos mensajes recibidos en el panel.</p>
           </div>
+          <Link href="/panel/consultas" className="text-sm font-semibold text-accent-text hover:underline">
+            Ver todas
+          </Link>
+        </div>
+
+        {recentInquiries.length === 0 ? (
+          <EmptyState
+            icon={<MessageSquare size={22} aria-hidden="true" />}
+            title="Todavía no hay consultas"
+            description="Cuando un visitante envíe una consulta, aparecerá aquí."
+          />
+        ) : (
+          <>
+            <div className="card hidden overflow-hidden md:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border bg-surface-muted">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Cliente</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Vehículo</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Estado</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {recentInquiries.map((inquiry) => (
+                    <tr key={inquiry.id} className="transition-colors hover:bg-surface-muted">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-foreground">{inquiry.name}</p>
+                        <p className="text-xs text-muted">{inquiry.email}</p>
+                      </td>
+                      <td className="px-4 py-3 text-muted">
+                        {inquiry.vehicleMake
+                          ? `${inquiry.vehicleMake} ${inquiry.vehicleModel ?? ""}`.trim()
+                          : "General"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge tone={INQUIRY_STATUS_CONFIG[inquiry.status].tone}>
+                          {INQUIRY_STATUS_CONFIG[inquiry.status].label}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-muted">{formatDate(inquiry.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3 md:hidden">
+              {recentInquiries.map((inquiry) => (
+                <div key={inquiry.id} className="card space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-foreground">{inquiry.name}</p>
+                      <p className="text-xs text-muted">{inquiry.email}</p>
+                    </div>
+                    <Badge tone={INQUIRY_STATUS_CONFIG[inquiry.status].tone}>
+                      {INQUIRY_STATUS_CONFIG[inquiry.status].label}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted">
+                    {inquiry.vehicleMake
+                      ? `${inquiry.vehicleMake} ${inquiry.vehicleModel ?? ""}`.trim()
+                      : "Consulta general"}
+                  </p>
+                  <p className="text-xs text-muted">{formatDate(inquiry.createdAt)}</p>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
     </div>
-  );
-}
-
-function InquiryStatusBadge({ status }: { status: InquirySummary["status"] }) {
-  const colors: Record<string, string> = {
-    NUEVA: "bg-dorado text-grafito",
-    EN_CONTACTO: "bg-azul-100 text-azul-800",
-    EN_SEGUIMIENTO: "bg-pendiente text-grafito",
-    VENDIDA: "bg-exito text-blanco",
-    DESCARTADA: "bg-gris-500 text-blanco",
-  };
-
-  return (
-    <span
-      className={`px-2 py-1 rounded-full text-xs font-medium ${
-        colors[status] || "bg-gris-100 text-gris-800"
-      }`}
-    >
-      {status}
-    </span>
   );
 }

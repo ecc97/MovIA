@@ -1,20 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
-import { useCreateVehicle } from "../hooks/useVehicles";
+import { useCreateVehicle, useUpdateVehicle, useVehicleDetail } from "../hooks/useVehicles";
 import PhotoUrlPreview from "./PhotoUrlPreview";
+import { Button } from "@/components/ui/Button";
+import { FormField, Input, Select, Textarea } from "@/components/ui/FormField";
+import { Modal } from "@/components/ui/Modal";
+import { LoadingBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import type { VehicleDetail } from "@/features/vehicles/types";
 
 const MAX_PHOTOS = 6;
 
-const httpUrl = (v: string) =>
-  v.trim() !== "" && /^https?:\/\//i.test(v) && URL.canParse(v.trim());
+const httpUrl = (value: string) =>
+  value.trim() !== "" && /^https?:\/\//i.test(value.trim()) && URL.canParse(value.trim());
 
-// Espejo de createVehicleSchema del backend; status: PUBLICADO por defecto o BORRADOR
 const vehicleSchema = z.object({
   make: z.string().min(1, "La marca es obligatoria").max(60, "Máximo 60 caracteres"),
   model: z.string().min(1, "El modelo es obligatorio").max(60, "Máximo 60 caracteres"),
@@ -23,42 +27,62 @@ const vehicleSchema = z.object({
     .int()
     .min(1900, "El año debe ser mayor a 1900")
     .max(new Date().getFullYear() + 1, "El año no puede ser futuro"),
-  price: z.coerce
-    .number()
-    .int("El precio debe ser un entero")
-    .min(0, "El precio no puede ser negativo"),
-  mileage: z.coerce
-    .number()
-    .int("El kilometraje debe ser un entero")
-    .min(0, "El kilometraje no puede ser negativo"),
+  price: z.coerce.number().int("El precio debe ser un entero").min(0, "El precio no puede ser negativo"),
+  mileage: z.coerce.number().int("El kilometraje debe ser un entero").min(0, "No puede ser negativo"),
   condition: z.enum(["NUEVO", "USADO"]),
   bodyType: z.enum(["AUTO", "SUV", "CAMIONETA"]),
-  fuel: z.string().min(1, "El combustible es obligatorio").max(40, "Máximo 40 caracteres"),
-  transmission: z.string().min(1, "La transmisión es obligatoria").max(40, "Máximo 40 caracteres"),
-  color: z.string().min(1, "El color es obligatorio").max(40, "Máximo 40 caracteres"),
+  fuel: z.string().min(1, "El combustible es obligatorio").max(40),
+  transmission: z.string().min(1, "La transmisión es obligatoria").max(40),
+  color: z.string().min(1, "El color es obligatorio").max(40),
   description: z.string().max(2000, "Máximo 2000 caracteres").optional(),
-  // URLs opcionales: solo se validan cuando tienen texto (los vacíos se ignoran)
   photos: z
     .array(z.object({ url: z.string() }))
     .max(MAX_PHOTOS, `Máximo ${MAX_PHOTOS} fotos`)
-    .refine(
-      (photos) => photos.every((p) => httpUrl(p.url)),
-      { message: "Hay URLs inválidas", path: ["photos"] }
-    ),
+    .refine((photos) => photos.every((photo) => httpUrl(photo.url)), {
+      message: "Hay URLs inválidas",
+      path: ["photos"],
+    }),
 });
 
-// Input = valores crudos del formulario (coerce recibe unknown); Output = ya convertidos
 type VehicleFormInput = z.input<typeof vehicleSchema>;
 type VehicleFormOutput = z.output<typeof vehicleSchema>;
 
 interface VehicleFormModalProps {
   open: boolean;
   onClose: () => void;
+  vehicleId?: string;
   onCreated?: (status: "BORRADOR" | "PUBLICADO") => void;
+  onUpdated?: () => void;
 }
 
-export default function VehicleFormModal({ open, onClose, onCreated }: VehicleFormModalProps) {
+function toFormValues(vehicle: VehicleDetail): VehicleFormInput {
+  return {
+    make: vehicle.make,
+    model: vehicle.model,
+    year: vehicle.year,
+    price: vehicle.price,
+    mileage: vehicle.mileage,
+    condition: vehicle.condition as "NUEVO" | "USADO",
+    bodyType: vehicle.bodyType as "AUTO" | "SUV" | "CAMIONETA",
+    fuel: vehicle.fuel,
+    transmission: vehicle.transmission,
+    color: vehicle.color,
+    description: vehicle.description ?? "",
+    photos: [],
+  };
+}
+
+export default function VehicleFormModal({
+  open,
+  onClose,
+  vehicleId,
+  onCreated,
+  onUpdated,
+}: VehicleFormModalProps) {
+  const isEdit = Boolean(vehicleId);
+  const detailQuery = useVehicleDetail(vehicleId, open && isEdit);
   const createMutation = useCreateVehicle();
+  const updateMutation = useUpdateVehicle();
   const toast = useToast();
   const [photosOpen, setPhotosOpen] = useState(false);
 
@@ -66,11 +90,12 @@ export default function VehicleFormModal({ open, onClose, onCreated }: VehicleFo
     register,
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<VehicleFormInput, unknown, VehicleFormOutput>({
     resolver: zodResolver(vehicleSchema),
     defaultValues: {
-      mileage: "0",
+      mileage: 0,
       description: "",
       photos: [{ url: "" }],
     },
@@ -79,13 +104,12 @@ export default function VehicleFormModal({ open, onClose, onCreated }: VehicleFo
   const { fields, append, remove } = useFieldArray({ control, name: "photos" });
   const photoUrls = useWatch({ control, name: "photos" }) ?? [];
 
-  if (!open) return null;
+  useEffect(() => {
+    if (detailQuery.data) reset(toFormValues(detailQuery.data));
+  }, [detailQuery.data, reset]);
 
-  const onSubmit = (values: VehicleFormOutput, status: "BORRADOR" | "PUBLICADO") => {
-    const photos = values.photos
-      .map((p) => p.url.trim())
-      .filter(Boolean);
-
+  const onCreate = (values: VehicleFormOutput, status: "BORRADOR" | "PUBLICADO") => {
+    const photos = values.photos.map((photo) => photo.url.trim()).filter(Boolean);
     createMutation.mutate(
       {
         ...values,
@@ -103,255 +127,225 @@ export default function VehicleFormModal({ open, onClose, onCreated }: VehicleFo
     );
   };
 
-  const submitWith = (status: "BORRADOR" | "PUBLICADO") =>
-    handleSubmit((values) => onSubmit(values, status))();
+  const onEdit = (values: VehicleFormOutput) => {
+    if (!vehicleId) return;
+    updateMutation.mutate(
+      {
+        id: vehicleId,
+        data: {
+          make: values.make,
+          model: values.model,
+          year: values.year,
+          price: values.price,
+          mileage: values.mileage,
+          condition: values.condition,
+          bodyType: values.bodyType,
+          fuel: values.fuel,
+          transmission: values.transmission,
+          color: values.color,
+          description: values.description || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Cambios guardados");
+          onUpdated?.();
+          onClose();
+        },
+      }
+    );
+  };
+
+  const submitCreate = (status: "BORRADOR" | "PUBLICADO") =>
+    handleSubmit((values) => onCreate(values, status))();
+
+  const mutationError = isEdit ? updateMutation.error : createMutation.error;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Crear vehículo"
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={isEdit ? "Editar vehículo" : "Crear vehículo"}
+      description={
+        isEdit
+          ? "Actualiza la ficha del vehículo. El estado y las fotos se gestionan por separado."
+          : "Completa la ficha. Puedes publicarlo de inmediato o guardarlo como borrador."
+      }
+      size="lg"
     >
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      <div className="relative bg-blanco rounded-card shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-sora text-lg font-semibold text-grafito">Crear vehículo</h2>
-          <button
-            onClick={onClose}
-            aria-label="Cerrar formulario"
-            className="p-1 text-gris-500 hover:bg-gris-100 rounded-full"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
+      {isEdit && detailQuery.isLoading ? (
+        <LoadingBlock label="Cargando vehículo…" />
+      ) : (
         <form
-          onSubmit={handleSubmit((values) => onSubmit(values, "PUBLICADO"))}
-          className="space-y-4"
+          onSubmit={isEdit ? handleSubmit(onEdit) : handleSubmit((values) => onCreate(values, "PUBLICADO"))}
+          className="space-y-5"
           noValidate
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="make" className="label-field">
-                Marca <span className="text-error">*</span>
-              </label>
-              <input id="make" {...register("make")} className="input-field" />
-              {errors.make && <p className="error-message">{errors.make.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="model" className="label-field">
-                Modelo <span className="text-error">*</span>
-              </label>
-              <input id="model" {...register("model")} className="input-field" />
-              {errors.model && <p className="error-message">{errors.model.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="year" className="label-field">
-                Año <span className="text-error">*</span>
-              </label>
-              <input id="year" type="number" {...register("year")} className="input-field" />
-              {errors.year && <p className="error-message">{errors.year.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="price" className="label-field">
-                Precio (COP) <span className="text-error">*</span>
-              </label>
-              <input id="price" type="number" {...register("price")} className="input-field" />
-              {errors.price && <p className="error-message">{errors.price.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="mileage" className="label-field">
-                Kilometraje
-              </label>
-              <input id="mileage" type="number" {...register("mileage")} className="input-field" />
-              {errors.mileage && <p className="error-message">{errors.mileage.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="condition" className="label-field">
-                Condición <span className="text-error">*</span>
-              </label>
-              <select id="condition" {...register("condition")} className="input-field">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Marca" htmlFor="vehicle-make" required error={errors.make?.message}>
+              <Input id="vehicle-make" {...register("make")} placeholder="Toyota" />
+            </FormField>
+            <FormField label="Modelo" htmlFor="vehicle-model" required error={errors.model?.message}>
+              <Input id="vehicle-model" {...register("model")} placeholder="Corolla" />
+            </FormField>
+            <FormField label="Año" htmlFor="vehicle-year" required error={errors.year?.message}>
+              <Input id="vehicle-year" type="number" {...register("year")} />
+            </FormField>
+            <FormField label="Precio (COP)" htmlFor="vehicle-price" required error={errors.price?.message}>
+              <Input id="vehicle-price" type="number" {...register("price")} />
+            </FormField>
+            <FormField label="Kilometraje" htmlFor="vehicle-mileage" error={errors.mileage?.message}>
+              <Input id="vehicle-mileage" type="number" {...register("mileage")} />
+            </FormField>
+            <FormField label="Condición" htmlFor="vehicle-condition" required error={errors.condition?.message}>
+              <Select id="vehicle-condition" {...register("condition")}>
                 <option value="USADO">Usado</option>
                 <option value="NUEVO">Nuevo</option>
-              </select>
-              {errors.condition && <p className="error-message">{errors.condition.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="bodyType" className="label-field">
-                Tipo <span className="text-error">*</span>
-              </label>
-              <select id="bodyType" {...register("bodyType")} className="input-field">
-                <option value="AUTO">Sedán (Auto)</option>
+              </Select>
+            </FormField>
+            <FormField label="Carrocería" htmlFor="vehicle-body" required error={errors.bodyType?.message}>
+              <Select id="vehicle-body" {...register("bodyType")}>
+                <option value="AUTO">Auto</option>
                 <option value="SUV">SUV</option>
                 <option value="CAMIONETA">Camioneta</option>
-              </select>
-              {errors.bodyType && <p className="error-message">{errors.bodyType.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="fuel" className="label-field">
-                Combustible <span className="text-error">*</span>
-              </label>
-              <input id="fuel" {...register("fuel")} className="input-field" placeholder="Gasolina" />
-              {errors.fuel && <p className="error-message">{errors.fuel.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="transmission" className="label-field">
-                Transmisión <span className="text-error">*</span>
-              </label>
-              <input
-                id="transmission"
-                {...register("transmission")}
-                className="input-field"
-                placeholder="Automática"
-              />
-              {errors.transmission && <p className="error-message">{errors.transmission.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="color" className="label-field">
-                Color <span className="text-error">*</span>
-              </label>
-              <input id="color" {...register("color")} className="input-field" placeholder="Blanco" />
-              {errors.color && <p className="error-message">{errors.color.message}</p>}
-            </div>
+              </Select>
+            </FormField>
+            <FormField label="Combustible" htmlFor="vehicle-fuel" required error={errors.fuel?.message}>
+              <Input id="vehicle-fuel" {...register("fuel")} placeholder="Gasolina" />
+            </FormField>
+            <FormField label="Transmisión" htmlFor="vehicle-transmission" required error={errors.transmission?.message}>
+              <Input id="vehicle-transmission" {...register("transmission")} placeholder="Automática" />
+            </FormField>
+            <FormField label="Color" htmlFor="vehicle-color" required error={errors.color?.message}>
+              <Input id="vehicle-color" {...register("color")} placeholder="Blanco" />
+            </FormField>
           </div>
 
-          <div>
-            <label htmlFor="description" className="label-field">
-              Descripción
-            </label>
-            <textarea
-              id="description"
+          <FormField label="Descripción" htmlFor="vehicle-description" error={errors.description?.message}>
+            <Textarea
+              id="vehicle-description"
               rows={3}
               {...register("description")}
-              className="input-field resize-none"
               placeholder="Detalles adicionales del vehículo (opcional)"
             />
-            {errors.description && <p className="error-message">{errors.description.message}</p>}
-          </div>
+          </FormField>
 
-          {/* Sección opcional y plegable de fotos */}
-          <div className="border border-gris-200 rounded-btn overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setPhotosOpen((v) => !v)}
-              aria-expanded={photosOpen}
-              aria-controls="vehicle-photos-section"
-              className="w-full flex items-center justify-between gap-2 p-3 text-left text-sm font-medium text-grafito hover:bg-gris-100 transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                Fotos (opcional) <span className="text-gris-500 font-normal">— la primera será la principal</span>
-              </span>
-              {photosOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-            </button>
+          {!isEdit && (
+            <div className="overflow-hidden rounded-btn border border-border">
+              <button
+                type="button"
+                onClick={() => setPhotosOpen((open) => !open)}
+                aria-expanded={photosOpen}
+                aria-controls="vehicle-photos-section"
+                className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface-muted"
+              >
+                <span className="flex items-center gap-2">
+                  Fotos (opcional)
+                  <span className="font-normal text-muted">— la primera será la principal</span>
+                </span>
+                {photosOpen ? <ChevronDown size={18} aria-hidden="true" /> : <ChevronRight size={18} aria-hidden="true" />}
+              </button>
 
-            {photosOpen && (
-              <div id="vehicle-photos-section" className="p-3 pt-0 space-y-3">
-                {fields.map((field, index) => (
-                  <div key={field.id} className="space-y-1">
-                    <label htmlFor={`photo-${index}`} className="label-field">
-                      Foto {index + 1}
-                    </label>
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1 space-y-1">
-                        <input
-                          id={`photo-${index}`}
-                          type="url"
-                          {...register(`photos.${index}.url`)}
-                          className="input-field"
-                          placeholder="https://ejemplo.com/foto.jpg"
-                          aria-invalid={!!errors.photos?.[index]}
-                        />
-                        {errors.photos?.[index]?.url && (
-                          <p className="error-message">{errors.photos[index]?.url?.message}</p>
+              {photosOpen && (
+                <div id="vehicle-photos-section" className="space-y-3 border-t border-border p-3">
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="space-y-1">
+                      <label htmlFor={`photo-${index}`} className="label-field">
+                        Foto {index + 1}
+                      </label>
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1">
+                          <Input
+                            id={`photo-${index}`}
+                            type="url"
+                            {...register(`photos.${index}.url`)}
+                            placeholder="https://ejemplo.com/foto.jpg"
+                          />
+                          {errors.photos?.[index]?.url && (
+                            <p className="error-message">{errors.photos[index]?.url?.message}</p>
+                          )}
+                        </div>
+                        <PhotoUrlPreview url={photoUrls[index]?.url ?? ""} label={`Vista previa de la foto ${index + 1}`} />
+                        {index > 0 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => remove(index)}
+                            aria-label={`Quitar foto ${index + 1}`}
+                            className="!min-h-10 !px-2 text-muted hover:text-error"
+                          >
+                            <X size={18} aria-hidden="true" />
+                          </Button>
                         )}
                       </div>
-                      <PhotoUrlPreview
-                        url={photoUrls[index]?.url ?? ""}
-                        label={`Vista previa de la foto ${index + 1}`}
-                      />
-                      {index > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => remove(index)}
-                          aria-label={`Quitar foto ${index + 1}`}
-                          className="p-2 mt-0.5 text-gris-500 hover:text-error hover:bg-error/10 rounded-btn"
-                        >
-                          <X size={18} />
-                        </button>
-                      )}
                     </div>
+                  ))}
+
+                  {errors.photos && !Array.isArray(errors.photos) && errors.photos.message && (
+                    <p className="error-message">{errors.photos.message}</p>
+                  )}
+
+                  <div className="flex items-center justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => append({ url: "" })}
+                      disabled={fields.length >= MAX_PHOTOS}
+                      leftIcon={<Plus size={16} aria-hidden="true" />}
+                    >
+                      Añadir foto
+                    </Button>
+                    <span className="text-xs text-muted">
+                      {fields.length}/{MAX_PHOTOS}
+                    </span>
                   </div>
-                ))}
-
-                {errors.photos && !Array.isArray(errors.photos) && errors.photos.message && (
-                  <p className="error-message">{errors.photos.message}</p>
-                )}
-
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => append({ url: "" })}
-                    disabled={fields.length >= MAX_PHOTOS}
-                    className="btn-outline inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Plus size={16} /> Añadir foto
-                  </button>
-                  <span className="text-xs text-gris-500">{fields.length}/{MAX_PHOTOS}</span>
                 </div>
-              </div>
-            )}
-          </div>
-
-          <p className="text-xs text-gris-500">
-            <strong>Crear vehículo</strong> lo publica de inmediato;{" "}
-            <strong>Guardar como borrador</strong> lo deja fuera del catálogo hasta que lo publiques
-            con el icono de ojo en la tabla. Las fotos son opcionales: si no se agregan, se mostrará
-            una imagen genérica.
-          </p>
-
-          {createMutation.isError && (
-            <div
-              className="bg-error/10 border border-error/30 rounded-btn p-3 text-sm text-error"
-              role="alert"
-            >
-              {createMutation.error.message}
+              )}
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-outline">
+          {!isEdit && (
+            <p className="text-xs leading-relaxed text-muted">
+              <strong>Crear vehículo</strong> lo publica de inmediato;{" "}
+              <strong>Guardar como borrador</strong> lo deja fuera del catálogo hasta que lo publiques desde el
+              inventario.
+            </p>
+          )}
+
+          {mutationError && (
+            <p className="rounded-btn border border-error/30 bg-error/10 p-3 text-sm text-error" role="alert">
+              {mutationError.message}
+            </p>
+          )}
+
+          <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-5">
+            <Button variant="outline" onClick={onClose}>
               Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={() => submitWith("BORRADOR")}
-              disabled={createMutation.isPending}
-              className="btn-outline"
-            >
-              Guardar como borrador
-            </button>
-            <button
-              type="button"
-              onClick={() => submitWith("PUBLICADO")}
-              disabled={createMutation.isPending}
-              className="btn-primary"
-            >
-              {createMutation.isPending ? "Guardando..." : "Crear vehículo"}
-            </button>
+            </Button>
+            {!isEdit && (
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => submitCreate("BORRADOR")}
+                disabled={createMutation.isPending}
+              >
+                Guardar como borrador
+              </Button>
+            )}
+            {isEdit ? (
+              <Button type="submit" loading={updateMutation.isPending}>
+                Guardar cambios
+              </Button>
+            ) : (
+              <Button type="button" onClick={() => submitCreate("PUBLICADO")} loading={createMutation.isPending}>
+                Crear vehículo
+              </Button>
+            )}
           </div>
         </form>
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 }

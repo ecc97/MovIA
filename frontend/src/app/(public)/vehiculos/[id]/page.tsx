@@ -1,21 +1,39 @@
-import { getVehicle } from "@/features/vehicles/services/vehicle.service";
-import type { VehicleDetail } from "@/features/vehicles/types";
-import VehicleImage from "@/features/vehicles/components/VehicleImage";
-import { getPrimaryPhotoUrl } from "@/features/vehicles/utils/vehicle-image";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { formatPriceCOP, getWhatsAppLink, formatDate } from "@/lib/utils";
-import {
-  Gauge,
-  Fuel,
-  Settings,
-  Palette,
-  Calendar,
-  ArrowLeft,
-  MessageCircle,
-} from "lucide-react";
+import { ArrowLeft, CalendarDays, Car, Fuel, Gauge, Palette, Settings } from "lucide-react";
+import { getVehicle } from "@/features/vehicles/services/vehicle.service";
+import { FALLBACK_VEHICLE_IMAGE_URL, getPrimaryPhotoUrl } from "@/features/vehicles/utils/vehicle-image";
+import type { VehicleDetail } from "@/features/vehicles/types";
+import VehicleGallery from "@/features/vehicles/components/VehicleGallery";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { buttonStyles } from "@/components/ui/Button";
+import { WhatsAppIcon } from "@/components/ui/icons/WhatsAppIcon";
 import InquiryForm from "@/features/inquiries/components/InquiryForm";
+import { WHATSAPP_NUMBER, formatDate, formatPriceCOP, getWhatsAppLink } from "@/lib/utils";
 
-export default async function VehiculoDetallePage({ params }: { params: Promise<{ id: string }> }) {
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  try {
+    const vehicle = await getVehicle(id);
+    return {
+      title: `${vehicle.make} ${vehicle.model} ${vehicle.year} | MOVIA`,
+      description: `${vehicle.make} ${vehicle.model} ${vehicle.year} · ${formatPriceCOP(vehicle.price)}. Ficha técnica y contacto sin registro.`,
+      openGraph: {
+        title: `${vehicle.make} ${vehicle.model} ${vehicle.year} | MOVIA`,
+        images: [getPrimaryPhotoUrl(vehicle.photos) ?? FALLBACK_VEHICLE_IMAGE_URL],
+      },
+    };
+  } catch {
+    return { title: "Vehículo no encontrado | MOVIA" };
+  }
+}
+
+export default async function VehiculoDetallePage({ params }: PageProps) {
   const { id } = await params;
 
   let vehicle: VehicleDetail | null = null;
@@ -23,176 +41,150 @@ export default async function VehiculoDetallePage({ params }: { params: Promise<
 
   try {
     vehicle = await getVehicle(id);
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Error al cargar el vehículo";
+  } catch (caught) {
+    error = caught instanceof Error ? caught.message : "Error al cargar el vehículo";
   }
 
   if (error || !vehicle) {
     return (
-      <div className="container-movia mx-auto px-4 py-12">
-        <div className="bg-error/10 border border-error/30 rounded-card p-6 text-center">
-          <p className="text-error font-semibold">Vehículo no encontrado</p>
-          <p className="text-gray-600 mt-2">{error ?? ""}</p>
-          <Link href="/catalogo" className="btn-secondary inline-block mt-4">
-            Volver al catálogo
-          </Link>
-        </div>
+      <div className="container-movia py-12">
+        <EmptyState
+          icon={<Car size={24} aria-hidden="true" />}
+          title="Vehículo no encontrado"
+          description={error ?? "Es posible que el vehículo ya no esté disponible."}
+          action={
+            <Link href="/catalogo" className="btn-primary">
+              Volver al catálogo
+            </Link>
+          }
+        />
       </div>
     );
   }
 
   const specs = [
     { icon: Gauge, label: "Kilometraje", value: `${vehicle.mileage.toLocaleString("es-CO")} km` },
-    { icon: Fuel, label: "Combustible", value: vehicle.fuel ?? "—" },
-    { icon: Settings, label: "Transmisión", value: vehicle.transmission ?? "—" },
-    { icon: Palette, label: "Color", value: vehicle.color ?? "—" },
-    { icon: Calendar, label: "Año", value: vehicle.year?.toString() ?? "—" },
-    { icon: Calendar, label: "Publicado", value: vehicle.createdAt ? formatDate(vehicle.createdAt) : "—" },
+    { icon: Fuel, label: "Combustible", value: vehicle.fuel || "—" },
+    { icon: Settings, label: "Transmisión", value: vehicle.transmission || "—" },
+    { icon: Palette, label: "Color", value: vehicle.color || "—" },
+    { icon: CalendarDays, label: "Año", value: String(vehicle.year) },
+    { icon: Car, label: "Carrocería", value: vehicle.bodyType },
   ];
 
-  const whatsappMsg = encodeURIComponent(
+  const whatsappHref = getWhatsAppLink(
+    WHATSAPP_NUMBER,
     `Hola, estoy interesado en el ${vehicle.make} ${vehicle.model} ${vehicle.year}. ¿Podrían darme más información?`
   );
 
   return (
-    <div className="container-movia mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-dorado transition-colors">
+    <div className="container-movia py-8 md:py-10">
+      <nav aria-label="Ruta de navegación" className="mb-5 flex flex-wrap items-center gap-2 text-xs text-muted">
+        <Link href="/" className="transition-colors hover:text-accent-text">
           Inicio
         </Link>
-        <span>/</span>
-        <Link href="/catalogo" className="hover:text-dorado transition-colors">
+        <span aria-hidden="true">/</span>
+        <Link href="/catalogo" className="transition-colors hover:text-accent-text">
           Catálogo
         </Link>
-        <span>/</span>
-        <span className="text-grafito font-medium truncate max-w-[200px]">
+        <span aria-hidden="true">/</span>
+        <span className="max-w-[220px] truncate font-medium text-foreground">
           {vehicle.make} {vehicle.model}
         </span>
       </nav>
 
-      {/* Back button */}
       <Link
         href="/catalogo"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-dorado transition-colors mb-6"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-accent-text"
       >
-        <ArrowLeft size={16} /> Volver al catálogo
+        <ArrowLeft size={16} aria-hidden="true" />
+        Volver al catálogo
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main content - photos + specs */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Photo gallery */}
-          <div className="space-y-4">
-            <div className="relative h-72 md:h-96 rounded-card overflow-hidden bg-gray-200">
-              <VehicleImage
-                src={getPrimaryPhotoUrl(vehicle.photos)}
-                alt={`${vehicle.make} ${vehicle.model}`}
-                sizes="(min-width: 1024px) 67vw, 100vw"
-                priority
-                skeleton={false}
-              />
-            </div>
-            {vehicle.photos.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
-                {vehicle.photos.slice(1, 5).map((photo, idx) => (
-                  <div
-                    key={`${photo.id ?? idx}-${idx}`}
-                    className="relative h-24 rounded-btn overflow-hidden bg-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                  >
-                    <VehicleImage
-                      src={photo.url}
-                      alt={`${vehicle.make} ${vehicle.model} foto ${idx + 2}`}
-                      sizes="(min-width: 1024px) calc((100vw - 32px) / 4), 25%"
-                      skeleton={false}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <VehicleGallery
+            photos={vehicle.photos}
+            make={vehicle.make}
+            model={vehicle.model}
+            priority
+          />
 
-          {/* Vehicle info */}
-          <div className="bg-blanco rounded-card p-6 shadow-sm">
-            <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
-              <div>
-                <span
-                  className={`badge-${vehicle.condition.toLowerCase() === "nuevo" ? "nuevo" : "usado"}`}
-                >
-                  {vehicle.condition === "NUEVO" ? "Nuevo" : "Usado"}
-                </span>
-                <h1 className="font-sora text-2xl font-bold text-grafito mt-3">
-                  {vehicle.make} {vehicle.model}
-                </h1>
-                <p className="text-gray-500 text-sm mt-1">
-                  {vehicle.year} · {vehicle.bodyType}
-                </p>
-              </div>
-              <p className="font-sora text-3xl font-bold text-dorado whitespace-nowrap">
-                {formatPriceCOP(vehicle.price)}
-              </p>
+          <section className="card p-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={vehicle.condition === "NUEVO" ? "success" : "warning"}>
+                {vehicle.condition === "NUEVO" ? "Nuevo" : "Usado"}
+              </Badge>
+              <Badge tone="neutral">{vehicle.bodyType}</Badge>
             </div>
-
+            <h1 className="mt-4 font-sora text-3xl font-bold tracking-tight text-foreground">
+              {vehicle.make} {vehicle.model}
+            </h1>
+            <p className="mt-1 text-sm text-muted">
+              {vehicle.year} · Publicado el {formatDate(vehicle.createdAt)}
+            </p>
             {vehicle.description && (
-              <p className="text-gray-700 leading-relaxed">{vehicle.description}</p>
+              <p className="mt-5 text-sm leading-relaxed text-foreground/80">{vehicle.description}</p>
             )}
-          </div>
+          </section>
 
-          {/* Specs grid */}
-          <div className="bg-blanco rounded-card p-6 shadow-sm">
-            <h2 className="font-sora text-xl font-semibold mb-4">Especificaciones técnicas</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <section className="card p-6">
+            <h2 className="font-sora text-lg font-semibold text-foreground">Especificaciones técnicas</h2>
+            <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3">
               {specs.map((spec) => (
                 <div key={spec.label} className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-dorado/10 rounded-full flex items-center justify-center shrink-0">
-                    <spec.icon size={18} className="text-dorado" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">{spec.label}</p>
-                    <p className="font-medium text-grafito">{spec.value}</p>
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-text">
+                    <spec.icon size={18} aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted">{spec.label}</p>
+                    <p className="truncate text-sm font-semibold text-foreground">{spec.value}</p>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         </div>
 
-        {/* Sidebar - WhatsApp + Inquiry */}
-        <div className="space-y-6">
-          {/* WhatsApp card */}
-          <div className="bg-blanco rounded-card p-6 shadow-sm">
-            <h2 className="font-sora text-lg font-semibold mb-4">¿Te interesa este vehículo?</h2>
+        <aside className="space-y-6">
+          <div className="lg:sticky lg:top-24 lg:space-y-6">
+            <section className="card p-6">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Precio COP</p>
+              <p className="mt-2 font-sora text-3xl font-bold tracking-tight text-accent-text">
+                {formatPriceCOP(vehicle.price)}
+              </p>
+              <p className="mt-2 text-xs text-muted">Precio de demostración · dato simulado.</p>
 
-            <div className="space-y-3">
               <a
-                href={getWhatsAppLink("", whatsappMsg)}
+                href={whatsappHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-primary w-full flex items-center justify-center gap-2"
+                aria-label={`Consultar por ${vehicle.make} ${vehicle.model} en WhatsApp`}
+                className={`${buttonStyles({ size: "lg", fullWidth: true })} mt-6`}
               >
-                <MessageCircle size={20} />
-                Contactar por WhatsApp
+                <WhatsAppIcon size={19} />
+                Consultar por WhatsApp
               </a>
-              <p className="text-xs text-gray-500 text-center">
-                Serás redirigido a WhatsApp para hablar directamente con un asesor.
+              <p className="mt-3 text-center text-xs text-muted">
+                Te redirigimos a WhatsApp con el mensaje listo. El clic no se guarda como consulta.
               </p>
-            </div>
-          </div>
+            </section>
 
-          {/* Inquiry form */}
-          <div className="bg-blanco rounded-card p-6 shadow-sm">
-            <h2 className="font-sora text-lg font-semibold mb-4">Enviar consulta</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              Déjanos tus datos y te contactaremos sobre este vehículo.
-            </p>
-            <InquiryForm
-              prefillMake={vehicle.make}
-              prefillModel={vehicle.model}
-              prefillYear={vehicle.year}
-              vehicleId={vehicle.id}
-            />
+            <section className="card p-6">
+              <h2 className="font-sora text-lg font-semibold text-foreground">Enviar consulta</h2>
+              <p className="mt-1 text-sm text-muted">
+                Déjanos tus datos y un asesor te contactará sobre este vehículo.
+              </p>
+              <div className="mt-5">
+                <InquiryForm
+                  prefillMake={vehicle.make}
+                  prefillModel={vehicle.model}
+                  prefillYear={vehicle.year}
+                  vehicleId={vehicle.id}
+                />
+              </div>
+            </section>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );

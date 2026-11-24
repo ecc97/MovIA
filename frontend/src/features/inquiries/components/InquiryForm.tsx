@@ -1,18 +1,20 @@
-'use client';
+"use client";
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createInquiry } from '../services/inquiry.service';
-import { Mail, User, Phone, MessageSquare } from 'lucide-react';
-import { useToast } from '@/components/ui/Toast';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Mail, MessageSquare, Phone, User } from "lucide-react";
+import { createInquiry } from "../services/inquiry.service";
+import { FormField, Input, Textarea } from "@/components/ui/FormField";
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 
 const inquirySchema = z.object({
-  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  email: z.string().email('Ingresa un correo válido'),
-  phone: z.string().min(7, 'Ingresa un número de teléfono válido'),
-  message: z.string().min(10, 'El mensaje debe tener al menos 10 caracteres'),
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  email: z.string().email("Ingresa un correo válido"),
+  phone: z.string().min(7, "Ingresa un número de teléfono válido"),
+  message: z.string().min(10, "El mensaje debe tener al menos 10 caracteres"),
 });
 
 type InquiryFormData = z.infer<typeof inquirySchema>;
@@ -45,9 +47,9 @@ export default function InquiryForm({
   const mutation = useMutation({
     mutationFn: createInquiry,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inquiries'] });
+      queryClient.invalidateQueries({ queryKey: ["inquiries"] });
       reset();
-      toast.success('Tu consulta ha sido enviada. Te contactaremos pronto.');
+      toast.success("Tu consulta ha sido enviada. Te contactaremos pronto.");
     },
   });
 
@@ -59,83 +61,45 @@ export default function InquiryForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       {prefillMake && prefillModel && (
-        <div className="bg-fondo-claro rounded-btn p-3 text-sm">
-          <span className="font-medium">Vehículo de interés:</span>{' '}
-          {prefillMake} {prefillModel} {prefillYear ?? ''}
+        <div className="rounded-btn border border-accent-border bg-accent-soft px-3 py-2.5 text-sm text-accent-text">
+          <span className="font-semibold">Vehículo de interés:</span>{" "}
+          {prefillMake} {prefillModel} {prefillYear ?? ""}
         </div>
       )}
 
-      <div>
-        <label htmlFor="name" className="label-field">
-          Nombre completo <span className="text-error">*</span>
-        </label>
-        <div className="relative">
-          <User size={18} className="absolute left-3 top-3 text-gray-400" />
-          <input
-            id="name"
-            {...register('name')}
-            className="input-field pl-10"
-            placeholder="Tu nombre completo"
-          />
-        </div>
-        {errors.name && <p className="error-message">{errors.name.message}</p>}
-      </div>
+      <FormField label="Nombre completo" htmlFor="name" required error={errors.name?.message}>
+        <Input id="name" icon={User} placeholder="Tu nombre completo" {...register("name")} />
+      </FormField>
 
-      <div>
-        <label htmlFor="email" className="label-field">
-          Correo electrónico <span className="text-error">*</span>
-        </label>
-        <div className="relative">
-          <Mail size={18} className="absolute left-3 top-3 text-gray-400" />
-          <input
-            id="email"
-            type="email"
-            {...register('email')}
-            className="input-field pl-10"
-            placeholder="tu@correo.com"
-          />
-        </div>
-        {errors.email && <p className="error-message">{errors.email.message}</p>}
-      </div>
+      <FormField label="Correo electrónico" htmlFor="email" required error={errors.email?.message}>
+        <Input id="email" type="email" icon={Mail} placeholder="tu@correo.com" {...register("email")} />
+      </FormField>
 
-      <div>
-        <label htmlFor="phone" className="label-field">
-          Teléfono <span className="text-error">*</span>
-        </label>
-        <div className="relative">
-          <Phone size={18} className="absolute left-3 top-3 text-gray-400" />
-          <input
-            id="phone"
-            {...register('phone')}
-            className="input-field pl-10"
-            placeholder="+57 300 123 4567"
-          />
-        </div>
-        {errors.phone && <p className="error-message">{errors.phone.message}</p>}
-      </div>
+      <FormField label="Teléfono" htmlFor="phone" required error={errors.phone?.message}>
+        <Input id="phone" type="tel" icon={Phone} placeholder="+57 300 123 4567" {...register("phone")} />
+      </FormField>
 
-      <div>
-        <label htmlFor="message" className="label-field">
-          Mensaje <span className="text-error">*</span>
-        </label>
-        <div className="relative">
-          <MessageSquare size={18} className="absolute left-3 top-3 text-gray-400" />
-          <textarea
-            id="message"
-            rows={4}
-            {...register('message')}
-            className="input-field pl-10 resize-none"
-            placeholder="Cuéntanos qué necesitas..."
-          />
-        </div>
-        {errors.message && <p className="error-message">{errors.message.message}</p>}
-      </div>
+      <FormField label="Mensaje" htmlFor="message" required error={errors.message?.message}>
+        <Textarea
+          id="message"
+          icon={MessageSquare}
+          rows={4}
+          placeholder="Cuéntanos qué necesitas..."
+          {...register("message")}
+        />
+      </FormField>
 
-      <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
-        {isSubmitting ? 'Enviando...' : 'Enviar consulta'}
-      </button>
+      {mutation.isError && (
+        <p className="error-message" role="alert">
+          {mutation.error?.message ?? "No pudimos enviar tu consulta. Inténtalo de nuevo."}
+        </p>
+      )}
+
+      <Button type="submit" fullWidth size="lg" loading={isSubmitting}>
+        {isSubmitting ? "Enviando..." : "Enviar consulta"}
+      </Button>
     </form>
   );
 }

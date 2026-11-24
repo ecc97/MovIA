@@ -90,5 +90,7 @@ export interface VehicleCreateData {
   status?: "BORRADOR" | "PUBLICADO";
 }
 
-// PATCH /api/vehicles/:id acepta actualización parcial (sin fotos: endpoints aparte)
-export type VehicleUpdateData = Partial<Omit<VehicleSummary, "id" | "photos">>;
+// PATCH /api/vehicles/:id acepta actualización parcial (sin fotos ni status: endpoints aparte)
+export type VehicleUpdateData = Partial<
+  Omit<VehicleDetail, "id" | "photos" | "status" | "createdAt" | "updatedAt">
+>;

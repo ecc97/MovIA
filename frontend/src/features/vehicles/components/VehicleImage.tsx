@@ -22,14 +22,17 @@ export default function VehicleImage({
   priority,
   skeleton = true,
 }: VehicleImageProps) {
-  const [current, setCurrent] = useState(src ?? FALLBACK_VEHICLE_IMAGE_URL);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+
+  const source = src ?? FALLBACK_VEHICLE_IMAGE_URL;
+  const current = failedUrl === source ? FALLBACK_VEHICLE_IMAGE_URL : source;
 
   return (
     <>
       {skeleton && !loaded && (
         <div
-          className="absolute inset-0 animate-pulse bg-gris-200"
+          className="absolute inset-0 animate-pulse bg-surface-muted"
           aria-hidden="true"
         />
       )}
@@ -45,10 +48,7 @@ export default function VehicleImage({
         onLoad={() => setLoaded(true)}
         onError={() => {
           // Si la URL falla, cambia al fallback (sin bucle si el fallback también falla)
-          if (current !== FALLBACK_VEHICLE_IMAGE_URL) {
-            setCurrent(FALLBACK_VEHICLE_IMAGE_URL);
-            setLoaded(false);
-          }
+          if (current !== FALLBACK_VEHICLE_IMAGE_URL) setFailedUrl(source);
         }}
       />
     </>

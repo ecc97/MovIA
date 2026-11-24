@@ -1,6 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { Modal } from "./Modal";
+import { Button } from "./Button";
 
 interface ConfirmOptions {
   title: string;
@@ -22,7 +24,6 @@ const ConfirmContext = createContext<ConfirmContextValue | null>(null);
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = useState<PendingConfirm | null>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
   const lastFocused = useRef<HTMLElement | null>(null);
 
   const confirm = useCallback(
@@ -44,64 +45,32 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     [pending]
   );
 
-  useEffect(() => {
-    if (pending) cancelRef.current?.focus();
-  }, [pending]);
-
-  useEffect(() => {
-    if (!pending) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") finish(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [pending, finish]);
+  const value = useMemo<ConfirmContextValue>(() => ({ confirm }), [confirm]);
 
   return (
-    <ConfirmContext.Provider value={{ confirm }}>
+    <ConfirmContext.Provider value={value}>
       {children}
-      {pending && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="confirm-title"
-          aria-describedby={pending.description ? "confirm-description" : undefined}
-          className="fixed inset-0 z-[70] flex items-center justify-center p-4"
-        >
-          <div className="absolute inset-0 bg-black/50" onClick={() => finish(false)} />
-          <div className="relative bg-blanco rounded-card shadow-xl w-full max-w-sm p-6 motion-safe:animate-[dialog-in_160ms_ease-out]">
-            <h2 id="confirm-title" className="font-sora text-lg font-semibold text-grafito">
-              {pending.title}
-            </h2>
-            {pending.description && (
-              <p id="confirm-description" className="mt-2 text-sm text-gris-600">
-                {pending.description}
-              </p>
-            )}
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                ref={cancelRef}
-                type="button"
-                onClick={() => finish(false)}
-                className="btn-outline"
-              >
-                {pending.cancelLabel ?? "Cancelar"}
-              </button>
-              <button
-                type="button"
-                onClick={() => finish(true)}
-                className={
-                  pending.variant === "danger"
-                    ? "bg-error text-blanco font-medium px-6 py-3 rounded-btn hover:bg-error/90 focus:outline-none focus:ring-2 focus:ring-error focus:ring-offset-2"
-                    : "btn-primary"
-                }
-              >
-                {pending.confirmLabel ?? "Confirmar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={pending !== null}
+        onClose={() => finish(false)}
+        title={pending?.title ?? ""}
+        description={pending?.description}
+        hideClose
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => finish(false)}>
+              {pending?.cancelLabel ?? "Cancelar"}
+            </Button>
+            <Button
+              variant={pending?.variant === "danger" ? "danger" : "primary"}
+              onClick={() => finish(true)}
+            >
+              {pending?.confirmLabel ?? "Confirmar"}
+            </Button>
+          </>
+        }
+      />
     </ConfirmContext.Provider>
   );
 }

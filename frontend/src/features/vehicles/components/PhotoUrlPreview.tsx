@@ -20,7 +20,7 @@ export default function PhotoUrlPreview({ url, label, className = "w-20 h-14" }:
 
   return (
     <div
-      className={`relative shrink-0 overflow-hidden rounded-btn bg-gris-200 flex items-center justify-center ${className}`}
+      className={`relative shrink-0 overflow-hidden rounded-btn bg-surface-muted flex items-center justify-center ${className}`}
       role="img"
       aria-label={label}
     >
@@ -35,7 +35,7 @@ export default function PhotoUrlPreview({ url, label, className = "w-20 h-14" }:
           onError={() => setFailedUrl(value)}
         />
       ) : (
-        <ImageIcon size={20} className="text-gris-500" aria-hidden="true" />
+        <ImageIcon size={20} className="text-muted" aria-hidden="true" />
       )}
     </div>
   );

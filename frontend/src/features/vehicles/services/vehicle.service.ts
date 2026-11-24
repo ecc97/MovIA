@@ -29,6 +29,10 @@ export async function getVehicles(params?: VehicleQueryParams): Promise<VehicleS
   return response.data ?? [];
 }
 
+export async function getVehiclePage(params?: VehicleQueryParams): Promise<VehicleList> {
+  return apiFetch<VehicleList>(`/api/vehicles${buildQueryString(params)}`);
+}
+
 export async function getInventoryPage(params?: VehicleInventoryParams): Promise<VehicleList> {
   return apiFetch<VehicleList>(`/api/vehicles/inventory${buildQueryString(params)}`);
 }

@@ -2,43 +2,37 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Car,
-  MessageSquare,
-  LogOut,
-  ChevronDown,
-} from "lucide-react";
-import { useState } from "react";
+import { Car, ExternalLink, LayoutDashboard, LogOut, MessageSquare } from "lucide-react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { Badge } from "@/components/ui/Badge";
+import { cn } from "@/lib/utils";
 import type { Role } from "@/types";
+
+interface SidebarProps {
+  role: Role;
+  onNavigate?: () => void;
+  className?: string;
+}
 
 interface NavItem {
   name: string;
   href: string;
-  icon: React.ElementType;
-  isDefault?: boolean;
+  icon: typeof LayoutDashboard;
   adminOnly?: boolean;
 }
 
-interface SidebarProps {
-  role: Role;
-}
+const navItems: NavItem[] = [
+  { name: "Dashboard", href: "/panel", icon: LayoutDashboard },
+  { name: "Inventario", href: "/panel/inventario", icon: Car, adminOnly: true },
+  { name: "Consultas", href: "/panel/consultas", icon: MessageSquare },
+  { name: "Sitio web", href: "/", icon: ExternalLink },
+];
 
-export default function Sidebar({ role }: SidebarProps) {
+export default function Sidebar({ role, onNavigate, className }: SidebarProps) {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { confirm } = useConfirm();
-
-  const navItems: NavItem[] = [
-    { name: "Dashboard", href: "/panel", icon: LayoutDashboard, isDefault: true },
-    { name: "Inventario", href: "/panel/inventario", icon: Car, adminOnly: true },
-    { name: "Consultas", href: "/panel/consultas", icon: MessageSquare },
-  ];
-
-  const isActive = (href: string) => pathname === href;
 
   const handleLogout = async () => {
     const accepted = await confirm({
@@ -50,138 +44,61 @@ export default function Sidebar({ role }: SidebarProps) {
   };
 
   return (
-    <>
-      {/* Mobile toggle */}
-      <div className="lg:hidden mb-4">
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="p-2 rounded-btn bg-grafito text-blanco hover:bg-gris-700 focus:outline-none focus:ring-2 focus:ring-dorado"
-          aria-label="Abrir menú"
-        >
-          {mobileOpen ? (
-            <ChevronDown size={20} className="rotate-180" />
-          ) : (
-            <ChevronDown size={20} className="" />
-          )}
-        </button>
+    <div className={cn("flex h-full flex-col bg-grafito text-white", className)}>
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-5">
+        <span className="font-sora text-lg font-bold tracking-[0.16em]">MOVIA</span>
+        <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/70">
+          Panel
+        </span>
       </div>
 
-      {/* Mobile sidebar */}
-      {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setMobileOpen(false)}
-        >
-          <div className="absolute left-0 top-0 h-full w-64 bg-grafito shadow-xl p-4">
-            <MobileNav role={role} onLogout={handleLogout} />
-          </div>
-        </div>
-      )}
-
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:block w-64 shrink-0 bg-grafito rounded-card p-4 shadow-sm h-fit">
-        <nav className="space-y-2">
-          {navItems.map((item) => (
-            <SidebarLink
-              key={item.name}
-              item={item}
-              isActive={isActive(item.href)}
-              role={role}
-            />
-          ))}
-          <button
-            onClick={handleLogout}
-            className="flex items-center w-full gap-3 px-3 py-2 rounded-md text-sm font-medium text-blanco hover:bg-gris-700 transition-colors"
-          >
-            <LogOut size={20} />
-            Cerrar sesión
-          </button>
-        </nav>
-      </aside>
-    </>
-  );
-}
-
-interface SidebarLinkProps {
-  item: NavItem;
-  isActive: boolean;
-  role: Role;
-}
-
-function SidebarLink({ item, isActive, role }: SidebarLinkProps) {
-  // El inventario es solo ADMIN (protegido además por el layout (admin))
-  if (item.adminOnly && role !== "ADMIN") {
-    return null;
-  }
-
-  return (
-    <Link
-      href={item.href}
-      className={`
-        flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
-        ${isActive
-          ? "bg-dorado text-grafito"
-          : "text-blanco hover:bg-gris-700"
-        }
-      `}
-    >
-      <item.icon size={20} />
-      {item.name}
-    </Link>
-  );
-}
-
-interface MobileNavProps {
-  role: Role;
-  onLogout: () => void;
-}
-
-function MobileNav({ role, onLogout }: MobileNavProps) {
-  const pathname = usePathname();
-
-  const navItems: NavItem[] = [
-    { name: "Dashboard", href: "/panel", icon: LayoutDashboard },
-    { name: "Inventario", href: "/panel/inventario", icon: Car, adminOnly: true },
-    { name: "Consultas", href: "/panel/consultas", icon: MessageSquare },
-  ];
-
-  return (
-    <div className="flex flex-col h-full">
-      <nav className="flex-1 space-y-1">
+      <nav aria-label="Navegación del panel" className="flex-1 space-y-1 px-3 py-6">
         {navItems.map((item) => {
-          // El inventario es solo ADMIN (protegido además por el layout (admin))
-          if (item.adminOnly && role !== "ADMIN") {
-            return null;
-          }
-
-          const isActive = pathname === item.href;
+          if (item.adminOnly && role !== "ADMIN") return null;
+          const active = pathname === item.href;
           return (
             <Link
-              key={item.name}
+              key={item.href}
               href={item.href}
-              className={`
-                flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
-                ${isActive
-                  ? "bg-dorado text-grafito"
-                  : "text-blanco hover:bg-gris-700"
-                }
-              `}
-              onClick={() => {}}
+              onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
+              target={item.href === "/" ? "_blank" : undefined}
+              className={cn(
+                "flex min-h-11 items-center gap-3 rounded-btn px-3 text-sm font-medium transition-colors",
+                active
+                  ? "bg-white/10 text-dorado"
+                  : "text-white/70 hover:bg-white/5 hover:text-white"
+              )}
             >
-              <item.icon size={20} />
+              <item.icon size={19} aria-hidden="true" />
               {item.name}
+              {active && <span className="ml-auto size-1.5 rounded-full bg-dorado" aria-hidden="true" />}
             </Link>
           );
         })}
       </nav>
 
-      <button
-        onClick={onLogout}
-        className="mt-4 flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-blanco hover:bg-gris-700 w-full"
-      >
-        <LogOut size={20} />
-        Cerrar sesión
-      </button>
+      <div className="shrink-0 border-t border-white/10 p-4">
+        <div className="mb-3 flex items-center gap-3 px-1">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-dorado-300">
+            {user?.name?.charAt(0).toUpperCase() ?? "M"}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-white">{user?.name ?? "Usuario"}</p>
+            <Badge tone="accent" className="mt-1 !px-2 !py-0.5 !text-[10px]">
+              {role}
+            </Badge>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex min-h-11 w-full items-center gap-3 rounded-btn px-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/5 hover:text-white"
+        >
+          <LogOut size={19} aria-hidden="true" />
+          Cerrar sesión
+        </button>
+      </div>
     </div>
   );
 }

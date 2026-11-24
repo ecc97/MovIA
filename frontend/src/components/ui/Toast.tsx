@@ -84,15 +84,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <div
               key={item.id}
               role={item.variant === "error" ? "alert" : "status"}
-              className="pointer-events-auto flex items-start gap-3 rounded-card border border-gris-200 bg-blanco p-3 shadow-lg motion-safe:animate-[toast-in_180ms_ease-out]"
+              className="pointer-events-auto flex items-start gap-3 rounded-card border border-border bg-surface p-3 shadow-xl motion-safe:animate-[toast-in_180ms_ease-out]"
             >
               <Icon size={18} className={`mt-0.5 shrink-0 ${iconColor}`} aria-hidden="true" />
-              <p className="flex-1 text-sm text-grafito">{item.message}</p>
+              <p className="flex-1 text-sm text-foreground">{item.message}</p>
               <button
                 type="button"
                 onClick={() => dismiss(item.id)}
                 aria-label="Cerrar notificación"
-                className="rounded-full p-0.5 text-gris-500 hover:bg-gris-100 focus:outline-none focus:ring-2 focus:ring-dorado"
+                className="rounded-full p-1 text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dorado"
               >
                 <X size={16} />
               </button>
