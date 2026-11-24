@@ -4,7 +4,6 @@ node_modules/
 .pnp.js
 .yarn/
 yarn-error.log*
-package-lock.json
 
 # Build / compilados
 dist/
@@ -17,6 +16,7 @@ tsconfig.tsbuildinfo
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # Prisma
 prisma/*.db

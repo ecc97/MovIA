@@ -2,6 +2,15 @@
 .env
 .env.*
 !.env.example
+!.env.*.example
+
+# Artefactos de tests
+coverage/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/.playwright/
+frontend/e2e/.auth/
 
 # IDE / editores
 .vscode/*

@@ -12,11 +12,6 @@ export interface InquiryCreateData {
   vehicleId?: string;
 }
 
-export interface InquiryResponse {
-  id: string;
-  message: string;
-}
-
 export interface InquirySummary {
   id: string;
   name: string;
@@ -32,6 +27,8 @@ export interface InquirySummary {
   createdAt: string;
   updatedAt: string;
 }
+
+export type InquiryResponse = InquirySummary;
 
 export interface InquiryListResponse {
   items: InquirySummary[];

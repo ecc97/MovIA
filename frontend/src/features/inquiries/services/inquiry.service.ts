@@ -32,20 +32,18 @@ export async function updateInquiryStatus(
   id: string,
   status: InquiryStatus
 ): Promise<InquirySummary> {
-  const response = await apiFetch<{ data: InquirySummary }>(`/api/inquiries/${id}/status`, {
+  return apiFetch<InquirySummary>(`/api/inquiries/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
   });
-  return response.data;
 }
 
 export async function updateInquiryNotes(
   id: string,
   notes: string
 ): Promise<InquirySummary> {
-  const response = await apiFetch<{ data: InquirySummary }>(`/api/inquiries/${id}/notes`, {
+  return apiFetch<InquirySummary>(`/api/inquiries/${id}/notes`, {
     method: "PATCH",
     body: JSON.stringify({ notes }),
   });
-  return response.data;
 }

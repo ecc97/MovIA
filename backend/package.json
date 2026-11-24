@@ -14,10 +14,23 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:db:init": "tsx scripts/create-test-db.ts",
+    "test:db:reset": "dotenv -e .env.test -- prisma db push --force-reset && dotenv -e .env.test -- tsx prisma/seed.ts",
+    "test:setup": "npm run test:db:init && npm run test:db:reset",
+    "test:server": "tsx src/server.ts",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+
   "keywords": [],
   "author": "",
   "license": "MIT",
@@ -41,11 +54,15 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^22.9.0",
+    "@types/supertest": "^7.2.1",
     "@types/swagger-ui-express": "^4.1.8",
+    "dotenv-cli": "^11.1.0",
     "eslint": "^9.14.0",
     "eslint-config-prettier": "^9.1.0",
     "prisma": "^5.22.0",
+    "supertest": "^7.3.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^5.1.1"
   }
 }

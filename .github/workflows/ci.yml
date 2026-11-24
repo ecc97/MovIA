@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Instalar dependencias
+        working-directory: backend
+        run: npm ci
+      - name: Instalar dependencias del frontend
+        working-directory: frontend
+        run: npm ci
+      - name: Typecheck backend (+ tests)
+        working-directory: backend
+        run: npm run typecheck && npm run typecheck:test
+      - name: Typecheck y lint frontend
+        working-directory: frontend
+        run: npm run typecheck && npm run lint
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+
+  test-backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: movia_test
+          POSTGRES_USER: movia
+          POSTGRES_PASSWORD: cambiar_en_produccion
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U movia -d movia_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://movia:cambiar_en_produccion@localhost:5432/movia_test?schema=public
+      SESSION_SECRET: test_session_secret_no_usar_en_produccion
+      SESSION_COOKIE_NAME: movia_session
+      SESSION_MAX_AGE_MS: "86400000"
+      PORT: "4000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Instalar dependencias
+        working-directory: backend
+        run: npm ci
+      - name: Preparar esquema y seed de test
+        working-directory: backend
+        run: |
+          npx prisma generate
+          npx prisma db push --skip-generate
+          npm run prisma:seed
+      - name: Vitest
+        working-directory: backend
+        run: npm test
+
+  test-e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: movia_test
+          POSTGRES_USER: movia
+          POSTGRES_PASSWORD: cambiar_en_produccion
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U movia -d movia_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://movia:cambiar_en_produccion@localhost:5432/movia_test?schema=public
+      SESSION_SECRET: test_session_secret_no_usar_en_produccion
+      SESSION_COOKIE_NAME: movia_session
+      SESSION_MAX_AGE_MS: "86400000"
+      PORT: "4000"
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Instalar backend
+        working-directory: backend
+        run: npm ci
+      - name: Instalar frontend
+        working-directory: frontend
+        run: npm ci
+      - name: Preparar esquema y seed de test
+        working-directory: backend
+        run: |
+          npx prisma generate
+          npx prisma db push --skip-generate
+          npm run prisma:seed
+      - name: Instalar Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Playwright E2E
+        working-directory: frontend
+        run: npm run test:e2e

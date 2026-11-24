@@ -16,6 +16,6 @@
     "sourceMap": false,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src/**/*.ts", "prisma/**/*.ts"],
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "prisma/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
