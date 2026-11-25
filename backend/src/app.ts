@@ -25,7 +25,18 @@ const limiter = rateLimit({
 });
 
 app.use(helmet());
-app.use(cors({ origin: true, credentials: true }));
+
+const corsOrigins = (process.env.CORS_ORIGIN ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: corsOrigins.length > 0 ? corsOrigins : true,
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 app.use(limiter);

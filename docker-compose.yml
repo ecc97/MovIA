@@ -1,5 +1,3 @@
-# MOVIA — Concesionario Web MVP
-# Fase 1: solo PostgreSQL en Docker. Los servicios web y api se contenerizan al final.
 services:
   db:
     image: postgres:16-alpine
@@ -18,6 +16,73 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: ./backend
+    container_name: movia-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: &api-env
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public"
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-movia_session}
+      SESSION_MAX_AGE_MS: ${SESSION_MAX_AGE_MS:-86400000}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000}"
+      SEED_IF_EMPTY: "true"
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+        NEXT_PUBLIC_WHATSAPP_NUMBER: ${NEXT_PUBLIC_WHATSAPP_NUMBER:?Define NEXT_PUBLIC_WHATSAPP_NUMBER}
+    container_name: movia-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      INTERNAL_API_URL: http://api:4000
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  seed:
+    build:
+      context: ./backend
+    container_name: movia-seed
+    profiles: ["seed"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *api-env
+      SEED_IF_EMPTY: "false"
+    command: ["npm", "run", "prisma:seed"]
+    restart: "no"
 
 volumes:
   movia-pgdata:
